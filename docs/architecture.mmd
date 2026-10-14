@@ -1,0 +1,27 @@
+flowchart LR
+  H[Human user] --> W[Next.js console]
+  X[External agent] --> MCP[MCP endpoint]
+  W --> API[FastAPI application and policy checks]
+  MCP --> API
+  API --> AUTH[Supabase Auth]
+  API --> CP[Supabase Postgres control plane and durable jobs]
+  API --> G[(FalkorDB graph per workspace)]
+  JOB[Background worker] --> CP
+  JOB --> G
+  API --> LLM[LLM provider]
+  JOB --> LLM
+  API -->|propose only| ACT[Sandbox action adapter]
+  H -->|approve or reject| API
+  ACT -->|outcome| G
+  G -->|sources, memory, tasks, traces, decisions| API
+
+  subgraph Governing_rules
+    ID[Server-derived tenant and agent identity]
+    ACL[Per-node, edge, source and history access checks]
+    TRUST[Provenance and trust review]
+    DEL[Forgetting blocks derived live content and active runs]
+  end
+  API -.-> ID
+  API -.-> ACL
+  API -.-> TRUST
+  API -.-> DEL
