@@ -14,4 +14,8 @@ npm run dev
 
 The seeded Northwind Labs graph is synthetic. Questions about checkout/payment/INC-284 use a bounded four-hop query against FalkorDB Cloud when configured; otherwise the UI labels its bundled answer as a demo fallback. Approval and handoff remain local previews. Authentication, workspace membership, imports, durable memory, and action execution are not wired yet.
 
-See [the graph model and Cypher](docs/graph-model.md), [MASTER_PLAN.md](MASTER_PLAN.md), and [the release runbook](docs/release-runbook.md).
+See [the graph model and Cypher](docs/graph-model.md), [the release runbook](docs/release-runbook.md), and the [demo recording guide](docs/demo-script.md). The full build plan is in [MASTER_PLAN.md](MASTER_PLAN.md).
+
+## Submission notes
+
+Intended tracks: **Agents That Act on Connected Data**, **Agent Memory and Coordination**, and **Company Brain**. AI coding assistant disclosure: this project was developed with OpenAI Codex; the team is responsible for reviewing and validating the implementation.
