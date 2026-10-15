@@ -9,11 +9,13 @@ export async function withWorkspaceGraph<T>(graphName: string, work: (query: Gra
 
   if (!configuredUrl) throw new Error("FALKORDB_URL is not configured");
   const url = new URL(configuredUrl);
-  if (url.protocol !== "falkors:") throw new Error("FALKORDB_URL must use falkors://; cloud database traffic requires TLS");
-  url.protocol = "rediss:";
+  if (url.protocol !== "falkors:" && url.protocol !== "falkor:") {
+    throw new Error("FALKORDB_URL must use falkors:// (TLS, e.g. FalkorDB Cloud) or falkor:// (plain, e.g. local Docker)");
+  }
+  url.protocol = url.protocol === "falkors:" ? "rediss:" : "redis:";
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(graphName)) throw new Error("Graph name is invalid");
 
-  const client = createClient({ url: url.toString(), socket: { connectTimeout: 5000, reconnectStrategy: false } });
+  const client = createClient({ url: url.toString(), RESP: 2, socket: { connectTimeout: 5000, reconnectStrategy: false } });
   client.on("error", () => {});
   await client.connect();
   try {

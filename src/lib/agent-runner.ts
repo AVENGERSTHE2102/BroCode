@@ -3,7 +3,7 @@ import { validatePriorAttemptReview } from "@/lib/attempt-review";
 import { mcpTools } from "@/lib/mcp-tools";
 import { workflowDomainInstructions, type WorkflowDomain } from "@/lib/workflow-domains";
 
-export const AGENT_PROMPT_REVISION = "waypoint-workflow-packs-v10";
+export const AGENT_PROMPT_REVISION = "waypoint-workflow-packs-v11";
 export const MAX_AGENT_TOOL_CALLS = 4;
 export const MAX_AGENT_TOOL_RESULT_BYTES = 16_000;
 const IDEMPOTENT_AGENT_TOOLS = new Set(["remember_fact", "create_task", "handoff_task", "propose_action"]);
@@ -181,7 +181,7 @@ export async function runToolSelectionLoop(
   const idempotencyPrefix = createHash("sha256").update(options.operationKey ?? randomUUID()).digest("hex");
   const messages: AgentMessage[] = [
     { role: "system", content: buildAgentSystemPrompt(options.workflowDomain) },
-    { role: "user", content: question },
+    { role: "user", content: `Active investigation ID: ${investigationId}. Pass this exact value as investigationId on every tool call.\n\n${question}` },
   ];
   const allowed = new Set(definitions.map((tool) => tool.function.name));
   const observedEvidence = new Map<string, { sourceId: string; version: string; url?: string }>();
@@ -260,24 +260,54 @@ function failedKeysFrom(value: Record<string, unknown>) {
     ? [item.attempt_key] : []))];
 }
 
+function isToolUseFailedWithNoToolsOffered(body: string) {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    return isRecord(parsed) && isRecord(parsed.error) && parsed.error.code === "tool_use_failed";
+  } catch {
+    return false;
+  }
+}
+
+const RATE_LIMIT_MAX_ATTEMPTS = 4;
+
 export async function completeWithModel(messages: AgentMessage[], tools: ToolDefinition[], config: ModelConfig, signal?: AbortSignal, maxTokens = 1800): Promise<Completion> {
   if (!Number.isInteger(maxTokens) || maxTokens < 1 || maxTokens > 1800) throw new Error("Model output token limit is invalid.");
-  const response = await fetch(`${config.baseUrl}/chat/completions`, {
-    method: "POST",
-    redirect: "error",
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),
-    headers: { authorization: `Bearer ${config.apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({ model: config.model, messages, tools, tool_choice: "auto", parallel_tool_calls: false, temperature: 0, max_tokens: maxTokens }),
-  });
-  const contentLength = Number(response.headers.get("content-length") ?? 0);
-  if (contentLength > 1_000_000) throw new Error("Model response exceeds the size limit.");
-  const body = await response.text();
-  if (new TextEncoder().encode(body).byteLength > 1_000_000) throw new Error("Model response exceeds the size limit.");
-  if (!response.ok) throw new Error(`Model provider returned HTTP ${response.status}.`);
-  let parsed: unknown;
-  try { parsed = JSON.parse(body); } catch { throw new Error("Model provider returned invalid JSON."); }
-  if (!isRecord(parsed) || !Array.isArray(parsed.choices)) throw new Error("Model provider response is invalid.");
-  return parsed as Completion;
+  for (let attempt = 1; ; attempt++) {
+    const response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: "POST",
+      redirect: "error",
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),
+      headers: { authorization: `Bearer ${config.apiKey}`, "content-type": "application/json" },
+      body: JSON.stringify({ model: config.model, messages, tools, tool_choice: tools.length ? "auto" : "none", parallel_tool_calls: false, temperature: 0, max_tokens: maxTokens }),
+    });
+    if (response.status === 429 && attempt < RATE_LIMIT_MAX_ATTEMPTS) {
+      const retryAfterSeconds = Number(response.headers.get("retry-after"));
+      const waitMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds * 1000 : 1000 * 2 ** attempt;
+      await response.body?.cancel();
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      continue;
+    }
+    const contentLength = Number(response.headers.get("content-length") ?? 0);
+    if (contentLength > 1_000_000) throw new Error("Model response exceeds the size limit.");
+    const body = await response.text();
+    if (new TextEncoder().encode(body).byteLength > 1_000_000) throw new Error("Model response exceeds the size limit.");
+    if (!response.ok) {
+      if (response.status === 400 && tools.length === 0 && isToolUseFailedWithNoToolsOffered(body)) {
+        return {
+          choices: [{ message: { content: JSON.stringify({
+            abstained: true, claims: [], alternatives: [],
+            uncertainty: "Model attempted a tool call after exhausting its tool-call budget; no further evidence could be gathered.",
+          }) } }],
+        };
+      }
+      throw new Error(`Model provider returned HTTP ${response.status}.`);
+    }
+    let parsed: unknown;
+    try { parsed = JSON.parse(body); } catch { throw new Error("Model provider returned invalid JSON."); }
+    if (!isRecord(parsed) || !Array.isArray(parsed.choices)) throw new Error("Model provider response is invalid.");
+    return parsed as Completion;
+  }
 }
 
 export function readModelConfig(env: Record<string, string | undefined> = process.env) {
