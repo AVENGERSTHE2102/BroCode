@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "dataClass": "synthetic_test_fixture_only",
+  "researchBasis": ["MASTER_PLAN.md P4/P5/P7/P9", "part1.md §3", "part2.md §6.6"],
+  "cases": [
+    {
+      "id": "fraud-transfer-network-triage",
+      "domain": "fraud_investigation",
+      "dimensions": ["fraud", "multi_hop", "source_provenance", "human_review"],
+      "question": "Should transfer tx-900 be treated as suspicious, and what evidence supports the next step?",
+      "principalGroups": ["fraud-analyst"],
+      "nodes": [
+        { "id": "tx-900", "type": "Transaction", "amount": 9800, "status": "pending", "sourceVersion": "ledger:44", "aclGroups": ["fraud-analyst"] },
+        { "id": "acct-17", "type": "Account", "openedAt": "2026-01-08", "sourceVersion": "accounts:19", "aclGroups": ["fraud-analyst"] },
+        { "id": "device-6", "type": "Device", "trust": "under_review", "sourceVersion": "device-feed:72", "aclGroups": ["fraud-analyst"] },
+        { "id": "case-31", "type": "PriorFraudCase", "outcome": "confirmed", "sourceVersion": "cases:31", "aclGroups": ["fraud-analyst"] }
+      ],
+      "edges": [
+        { "id": "f-e1", "from": "tx-900", "type": "INITIATED_BY", "to": "acct-17", "sourceVersion": "ledger:44" },
+        { "id": "f-e2", "from": "acct-17", "type": "USED_DEVICE", "to": "device-6", "sourceVersion": "device-feed:72" },
+        { "id": "f-e3", "from": "device-6", "type": "LINKED_TO_CASE", "to": "case-31", "sourceVersion": "cases:31" }
+      ],
+      "expected": {
+        "outcome": "recommend_review",
+        "claims": ["tx-900 is connected through acct-17 and device-6 to confirmed case-31"],
+        "evidencePaths": [["tx-900", "f-e1", "acct-17", "f-e2", "device-6", "f-e3", "case-31"]],
+        "requiredControls": ["show_source_versions", "describe_as_risk_signal_not_proof", "require_authorized_human_before_hold_or_reversal"]
+      }
+    },
+    {
+      "id": "security-finding-impact-triage",
+      "domain": "security_triage",
+      "dimensions": ["security", "multi_hop", "source_provenance", "human_review"],
+      "question": "Which deployed service may be affected by finding vuln-72, and what evidence should guide remediation?",
+      "principalGroups": ["security-response"],
+      "nodes": [
+        { "id": "vuln-72", "type": "Finding", "severity": "high", "status": "open", "sourceVersion": "scanner:2026-10-11", "aclGroups": ["security-response"] },
+        { "id": "pkg-4", "type": "Dependency", "name": "libsample", "sourceVersion": "lockfile:commit-a17", "aclGroups": ["security-response"] },
+        { "id": "repo-api", "type": "Repository", "sourceVersion": "github:commit-a17", "aclGroups": ["security-response"] },
+        { "id": "service-profile", "type": "Service", "sourceVersion": "catalog:rev-8", "aclGroups": ["security-response"] },
+        { "id": "deploy-55", "type": "Deployment", "revision": "a17", "sourceVersion": "provider:deploy-55", "aclGroups": ["security-response"] }
+      ],
+      "edges": [
+        { "id": "s-e1", "from": "vuln-72", "type": "AFFECTS", "to": "pkg-4", "sourceVersion": "scanner:2026-10-11" },
+        { "id": "s-e2", "from": "pkg-4", "type": "DECLARED_IN", "to": "repo-api", "sourceVersion": "lockfile:commit-a17" },
+        { "id": "s-e3", "from": "repo-api", "type": "BUILDS", "to": "service-profile", "sourceVersion": "catalog:rev-8" },
+        { "id": "s-e4", "from": "service-profile", "type": "RUNNING_AS", "to": "deploy-55", "sourceVersion": "provider:deploy-55" }
+      ],
+      "expected": {
+        "outcome": "recommend_verified_remediation",
+        "claims": ["vuln-72 affects libsample declared by repo-api, which builds service-profile currently deployed as revision a17"],
+        "evidencePaths": [["vuln-72", "s-e1", "pkg-4", "s-e2", "repo-api", "s-e3", "service-profile", "s-e4", "deploy-55"]],
+        "requiredControls": ["verify_advisory_and_deployed_version", "cite_each_relationship_source", "propose_patch_for_review_without_claiming_fix"]
+      }
+    },
+    {
+      "id": "codebase-change-ownership-path",
+      "domain": "codebase_work",
+      "dimensions": ["codebase", "multi_hop", "ownership", "source_provenance"],
+      "question": "Who owns the code most directly associated with issue issue-18, and which change introduced the referenced module?",
+      "principalGroups": ["engineering"],
+      "nodes": [
+        { "id": "issue-18", "type": "Issue", "status": "open", "sourceVersion": "github:issue-18@7", "aclGroups": ["engineering"] },
+        { "id": "module-auth", "type": "CodeModule", "path": "src/auth/session.ts", "sourceVersion": "github:commit-b22", "aclGroups": ["engineering"] },
+        { "id": "repo-web", "type": "Repository", "sourceVersion": "github:commit-b22", "aclGroups": ["engineering"] },
+        { "id": "change-b22", "type": "Change", "revision": "b22", "sourceVersion": "github:pr-90", "aclGroups": ["engineering"] },
+        { "id": "team-identity", "type": "Team", "sourceVersion": "catalog:rev-3", "aclGroups": ["engineering"] }
+      ],
+      "edges": [
+        { "id": "c-e1", "from": "issue-18", "type": "REFERENCES", "to": "module-auth", "sourceVersion": "github:issue-18@7" },
+        { "id": "c-e2", "from": "module-auth", "type": "PART_OF", "to": "repo-web", "sourceVersion": "github:commit-b22" },
+        { "id": "c-e3", "from": "repo-web", "type": "CHANGED_BY", "to": "change-b22", "sourceVersion": "github:pr-90" },
+        { "id": "c-e4", "from": "module-auth", "type": "OWNED_BY", "to": "team-identity", "sourceVersion": "catalog:rev-3" }
+      ],
+      "expected": {
+        "outcome": "answer_with_citations",
+        "claims": ["team-identity owns src/auth/session.ts", "change-b22 updated repo-web at revision b22"],
+        "evidencePaths": [["issue-18", "c-e1", "module-auth", "c-e4", "team-identity"], ["module-auth", "c-e2", "repo-web", "c-e3", "change-b22"]],
+        "requiredControls": ["distinguish_direct_source_evidence_from_inference", "cite_source_versions", "abstain_if_owner_or_change_link_is_missing"]
+      }
+    }
+  ]
+}

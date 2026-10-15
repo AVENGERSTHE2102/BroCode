@@ -1,13 +1,7 @@
-# Demo recording guide
+# Alpha workflow recording guide
 
-Record only after `npm run seed:demo` succeeds and Settings reports the graph connected. Use synthetic Northwind Labs data throughout.
+Record a product walkthrough only after the real-data release gates in [IMPLEMENTATION_TRACKER.md](../IMPLEMENTATION_TRACKER.md) pass. Do not use seeded company records, mocked sources, bundled answers, or local-preview actions as evidence.
 
-| Time | Show and say |
-|---|---|
-| 0:00–0:12 | Open Waypoint. “Waypoint gives engineering agents one place to recover connected company context and inspect the evidence behind an answer.” |
-| 0:12–0:32 | Ask “What changed before the payment incident?” Show the connected answer and its evidence sources. “This answer traverses FalkorDB from incident INC-284 and returns source-linked records within four hops.” |
-| 0:32–0:48 | Open Knowledge and follow checkout → deploy #1842 → INC-284 → retry policy. “The path is inspectable, so a responder can check why the answer was produced.” |
-| 0:48–1:02 | Show the live `waypoint_demo` graph and its six nodes and five relationships in FalkorDB Browser. “The graph stores the connected demo records, rather than serving as a decorative visualization.” |
-| 1:02–1:15 | Open Settings. “This build is a demo slice. Memory versioning, handoff persistence, authentication, and deployment actions are not implemented; the action shown in the UI is a local preview and does not execute.” |
+The recording should show an authorized GitHub repository and deployed non-production service; one incident investigated through MCP-selected graph paths; the source revisions and prior attempts that influence the decision; an explicit human approval bound to the proposed action; provider-side execution and health verification; and the same investigation outcome recovered in a fresh session.
 
-Before recording, verify the cloud API route as well as the browser query: `GET /api/graph/health` must return `connected`, and a question from Overview must show `source: falkordb`. If either check fails, stop and fix the Node runtime connection first; do not record the bundled fallback as a live graph answer.
+If an integration, approval, action, or outcome cannot be verified from its provider, label the walkthrough incomplete and do not present it as a working alpha.

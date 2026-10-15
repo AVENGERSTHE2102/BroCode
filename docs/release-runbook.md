@@ -1,53 +1,26 @@
-# Local demo and release readiness
+# Waypoint setup and release gates
 
-## Run the current preview
+## Managed service setup
 
-```sh
-npm install
-cp .env.example .env.local
-# Put your FalkorDB Cloud connection URL in .env.local first.
-npm run seed:demo
-npm run dev
-```
+1. Create a Supabase project and configure its site URL and email-confirmation redirect to `<application-origin>/auth/callback`.
+2. Apply every SQL migration in `supabase/migrations` in filename order. They have not been remotely validated yet.
+3. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `FALKORDB_URL` in the appropriate deployment environments. Keep service-role and model-provider credentials server-only. To enable investigation runs, also set `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL` for an OpenAI-compatible chat-completions provider.
+4. To connect GitHub, create a GitHub App with repository metadata, contents, issues, pull requests, and checks permissions set to read-only; enable user authorization during installation; set its callback to `<application-origin>/api/sources/github/callback`; and install it only for target repositories. Optional Dependabot import requires the App's Dependabot alerts permission set to read and uses a separate one-repository token. GitHub marks this REST API as public preview and subject to change. To enable reviewed draft PRs, additionally grant Contents and Pull requests write plus Commit statuses read. Configure `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, and a random `GITHUB_APP_STATE_SECRET` (minimum 32 characters) as server-only secrets. After applying migrations 008–021, an owner/admin authorizes the installation, selects a repository, and can sync bounded commit, issue, pull request, file metadata, and default-branch-head check-run evidence plus optional Dependabot findings. For the first ten returned PRs, the importer also links up to 20 changed-file paths per PR without reading file contents; partial reads preserve the last complete relationship set. Check-run records link to the corresponding commit in FalkorDB. Security findings and revisions are owner/admin-only. Records are stored in Postgres, superseded versions are archived, and current/history nodes are projected through the outbox worker. Reviewed aliases can be managed from the workspace home page. New investigations select fraud, security, or codebase workflows; source connectors determine which evidence each can use. Approved patch execution creates a deterministic branch and draft PR, verifies the PR head/base/check state, and does not merge; normal sync tokens remain read-only. Migration 019 rejects action proposals and migration 020 persists the latest admin-only sync status that cite source versions outside the caller's accessible workspace scope. Live provider and cloud runtime checks remain required.
+5. Deploy the Next.js app manually to a host that supports its production server. From the checked-out release, install the pinned dependencies with `bun install --frozen-lockfile`, build with `bun run build`, and start with `bun run start`. Configure `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the app; configure `SUPABASE_SERVICE_ROLE_KEY`, `FALKORDB_URL`, optional GitHub App secrets, and optional `AI_BASE_URL`/`AI_API_KEY`/`AI_MODEL` as server-only runtime secrets. The public `NEXT_PUBLIC_*` values must also be available during build if the host substitutes them then. Do not commit `.env.local` or bake server secrets into the client bundle. Configure the host's liveness probe to call `/api/health/live`; this checks only that the app responds. Separately verify sign-in, an authenticated workspace read, and `/api/graph/health` for dependency connectivity; do not treat a successful build or liveness response as proof of cloud connectivity.
+6. Configure the host's scheduler to run `bun run worker:graph-projection` from the same release with `SUPABASE_SERVICE_ROLE_KEY` and `FALKORDB_URL` available only to that trusted job. Schedule it at the desired interval and alert on failed job invocations, dead-letter rows, or a growing outbox. The worker uses a database lease, processes at most 20 rows per invocation, caps retries at eight with backoff/jitter, and retains exhausted rows for manual replay. Do not run concurrent copies unless the database lease migration has been applied and verified.
+7. For local development, install with `bun install`, copy `.env.example` to `.env.local`, set the managed service values, and run `bun run dev`.
 
-Open the local Next.js URL and walk through these seeded screens:
+No Docker setup is supported. Never put a Supabase secret/service-role key in browser configuration. Authenticated users access workflow tables through RLS; the outbox worker uses service-role credentials and should run only in a trusted server environment.
 
-1. **Overview:** ask “What changed before the payment incident?” and inspect the seeded answer and its three evidence sources.
-2. **Knowledge:** follow the checkout service → deploy #1842 → INC-284 → retry policy path.
-3. **Memory:** compare current V2 with superseded V1.
-4. **Investigations:** inspect the incident timeline and preview the proposed handoff.
-5. **Settings:** confirm the workspace is marked as local demo data and that connection, key, export, and deletion controls are unavailable.
+Investigation deletion clears the live Postgres records and their FalkorDB projections after verification. Managed database backups or point-in-time recovery snapshots may retain deleted data until the provider's retention window expires; verify and communicate that window before storing customer data.
 
-With `FALKORDB_URL` configured and the synthetic seed loaded, Ask calls the server API, which performs a bounded four-hop FalkorDB query and returns graph records with their source IDs. Without a working cloud connection, Ask labels and shows the bundled demo response. Approval and handoff remain local previews; they do not persist state or execute a deployment. Use synthetic data only.
+## Current verification
 
-## Verification recorded
+- `bun run build` passed on 15 October 2026 after Supabase/workspace implementation and removal of the synthetic dashboard.
+- GitHub action contracts, source-import contracts, agent-runner contracts, typecheck, and a production build pass offline after adding approved draft-PR execution. The action migration, installed App permissions, source evidence freshness, and actual GitHub calls are not live-verified.
+- Supabase client credentials are present in `.env.local`, but the Supabase endpoint could not be reached from this environment and there is no Postgres connection string or Supabase CLI; sign-in, migration execution, and membership isolation have not been verified. FalkorDB DNS is also unresolved; production connections require the TLS-enabled `falkors://` scheme.
+- FalkorDB Browser previously showed a six-node synthetic graph. That data is not used by this application flow and is not acceptance evidence.
 
-- Production build passed with `npm run build` on 15 October 2026.
-- Browser walkthrough passed against the local app on 15 October 2026: seeded question submission, Knowledge evidence path, Memory current/history, Investigations timeline, and Settings disclosure were visible.
-- This verifies the local preview flow only. It does not cover restart persistence, authorization, imports, action execution, deletion, mobile layout, or a deployed environment.
-- The cloud URL is stored in the ignored, mode-600 `.env.local`, using the credential copied from the provider dashboard. FalkorDB Browser authenticated successfully and shows the `waypoint_demo` graph with 6 nodes and all 5 expected relationships. The bounded four-hop retrieval Cypher returned the six connected synthetic records in the browser. This verifies the cloud instance, graph data, and query shape. In this workspace, `npm run seed:demo` still fails with Node DNS `ENOTFOUND`, even though public DNS resolves the host and the provider browser connects. The app's Node API connection and cloud-backed Ask remain unverified until the seed script can run from a network-enabled Node environment.
+## Release gate
 
-## Day 3 release gate
-
-The current tree is a UI prototype. These release items remain incomplete and must be evidenced before describing Waypoint as a deployed beta:
-
-- Authenticated API, workspace membership enforcement, and per-workspace FalkorDB graphs. A single demo graph query path is implemented, but it is not tenant isolation.
-- Durable imports, versioned memory, task handoffs, approval-bound sandbox actions, and selective forgetting.
-- The 40-case evaluation with a text-only and Markdown baseline, including dataset/model/config/code revisions and measured results.
-- Browser verification of the end-to-end workflow, including a fresh-session restart and access/deletion cases.
-- A deployed environment with setup instructions and operational checks.
-- A recorded demo video and completed submission for all intended tracks.
-
-Do not claim graph superiority, persistent memory, tenant isolation, deletion completion, or action execution based on this local preview. Record those claims only after the corresponding gates pass against the running system.
-
-## Graph Hacks submission checklist
-
-The [official rules](https://www.wemakedevs.org/hackathons/falkordb/rules), checked 15 October 2026, require:
-
-- FalkorDB as the primary graph database, doing work central to the product.
-- A public source repository; a README with setup instructions and the graph data model; and the Cypher queries or graph algorithms the product depends on.
-- A working demo video and either a live deployment or complete local setup instructions.
-- The chosen track or tracks named in the submission. Waypoint's intended fit is all three: Agents That Act on Connected Data, Agent Memory and Coordination, and Company Brain.
-- Disclosure of AI coding assistant use, plus a team that can explain and verify the graph model, queries, architecture, and technical decisions.
-
-Current status against those requirements: the README, graph model, Cypher retrieval query, and cloud client code exist, but the repository is not public, cloud connectivity is not yet verified, there is no working video, and no app deployment. The preview alone does not meet the required graph-centrality rule. Do not submit until these items are implemented and evidenced.
+Use [IMPLEMENTATION_TRACKER.md](../IMPLEMENTATION_TRACKER.md) as the authoritative gate list. Do not call this a working alpha until an authenticated user accesses only their workspace, real sources are connected, graph evidence drives a recommendation, approved GitHub and deployment actions are externally verified, and investigation state survives a fresh session. Synthetic records and UI previews do not satisfy these checks.

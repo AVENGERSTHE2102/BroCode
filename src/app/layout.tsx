@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Waypoint — connected context for agents",
-  description: "A source-grounded context workspace for engineering agents.",
+  title: "Waypoint — engineering incident agent",
+  description: "Investigate engineering incidents through connected evidence and approved actions.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

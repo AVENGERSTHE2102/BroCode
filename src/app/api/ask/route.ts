@@ -1,66 +1,35 @@
 import { NextResponse } from "next/server";
-import { withWorkspaceGraph } from "@/lib/falkordb";
+import { POST as runInvestigation } from "@/app/api/investigations/[id]/run/route";
+import { readJsonBody } from "@/lib/read-json-body";
 
 export const runtime = "nodejs";
-
-type EvidenceRow = [string, string, string, string, string, string[]];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Request body must be JSON." }, { status: 400 });
+  if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") {
+    return NextResponse.json({ error: "Content-Type must be application/json." }, { status: 415 });
   }
-
-  const question = typeof body === "object" && body !== null && "question" in body
-    ? (body as { question?: unknown }).question
-    : undefined;
-  if (typeof question !== "string" || question.trim().length < 3 || question.length > 500) {
-    return NextResponse.json({ error: "Question must be between 3 and 500 characters." }, { status: 400 });
+  const parsed = await readJsonBody(request, 16_384);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.reason === "too_large" ? "Request body is too large." : "Request body must be valid JSON." }, { status: parsed.reason === "too_large" ? 413 : 400 });
+  const body = parsed.value;
+  if (typeof body !== "object" || body === null || Array.isArray(body)
+    || !("investigationId" in body) || typeof body.investigationId !== "string" || !UUID.test(body.investigationId)
+    || !("question" in body) || typeof body.question !== "string"
+    || !("idempotencyKey" in body) || typeof body.idempotencyKey !== "string"
+    || !/^[A-Za-z0-9._:-]{1,160}$/.test(body.idempotencyKey)) {
+    return NextResponse.json({ error: "A valid investigation ID, question, and idempotency key are required." }, { status: 400 });
   }
-
-  if (!/payment|checkout|inc-284/i.test(question)) {
-    return NextResponse.json({ error: "The connected demo graph currently contains the checkout incident (INC-284)." }, { status: 422 });
+  const runId = "runId" in body ? body.runId : undefined;
+  if (runId !== undefined && (typeof runId !== "string" || !UUID.test(runId))) return NextResponse.json({ error: "Run ID is invalid." }, { status: 400 });
+  const headers = new Headers({ "content-type": "application/json" });
+  for (const name of ["authorization", "x-waypoint-workspace"]) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
   }
-
-  try {
-    const evidence = await withWorkspaceGraph(async (query) => {
-      return query<EvidenceRow>(
-        `MATCH path = (incident:Incident {id: "INC-284"})-[*0..4]-(related)
-         RETURN DISTINCT coalesce(related.id, related.title) AS id,
-                coalesce(related.title, related.name, related.id) AS title,
-                coalesce(related.kind, head(labels(related))) AS kind,
-                coalesce(related.source, "") AS source,
-                coalesce(related.summary, "") AS summary,
-                [node IN nodes(path) | coalesce(node.title, node.name, node.id)] AS path
-         LIMIT 30`,
-        3000,
-      );
-    });
-
-    if (!evidence.length) {
-      return NextResponse.json({ error: "No accessible graph evidence was found for INC-284." }, { status: 404 });
-    }
-
-    const records = evidence.map(([id, title, kind, source, summary, path]) => ({ id, title, kind, source, summary, path }));
-    const answer = records
-      .filter((item) => ["deploy-1842", "INC-284", "decision-retry", "deploy-1837"].includes(item.id) && item.summary)
-      .map((item) => item.summary)
-      .join(" ");
-
-    return NextResponse.json({
-      answer: answer || `The graph returned ${records.length} connected records for INC-284.`,
-      sources: records.filter((item) => item.source).map(({ title, kind, source }) => ({ title, kind, source })),
-      path: records.find((item) => item.id === "INC-284")?.path ?? records[0].path,
-      hopLimit: 4,
-      source: "falkordb",
-    });
-  } catch (error) {
-    const unavailable = error instanceof Error && /FALKORDB_URL/.test(error.message);
-    return NextResponse.json(
-      { error: unavailable ? "FalkorDB Cloud is not configured." : "FalkorDB Cloud could not answer this question." },
-      { status: unavailable ? 503 : 502 },
-    );
-  }
+  const runRequest = new Request(request.url, {
+    method: "POST", headers, signal: request.signal,
+    body: JSON.stringify({ question: body.question, idempotencyKey: body.idempotencyKey, ...(typeof runId === "string" ? { runId } : {}),
+      requestedWrites: { proposals: false, factCandidates: false, taskUpdates: false } }),
+  });
+  return runInvestigation(runRequest, { params: Promise.resolve({ id: body.investigationId }) });
 }

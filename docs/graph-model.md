@@ -1,39 +1,32 @@
-# Waypoint demo graph
+# Waypoint graph model
 
-The current cloud slice seeds a single synthetic Northwind Labs workspace graph named by the server-side `FALKORDB_GRAPH` setting. The browser cannot choose a graph name.
+Each workspace receives a dedicated FalkorDB graph. The server derives its graph name as `wp_` plus the normalized workspace UUID **after** Supabase verifies the caller's membership. The client cannot choose a graph name. The name is validated again by the graph connection helper.
 
-## Nodes
+Graph reads filter by the authenticated membership role: `workspace` records are visible to workspace members, role-scoped records require a matching role, and `admin` records are visible to both owners and admins to match Postgres RLS. Multi-hop traces apply the same check to every node and relationship in the path; missing ACL metadata is denied. Dependabot security findings use the `admin` scope; other current projections use `workspace`. Finer source groups and live cloud denial tests remain required before importing additional restricted data.
 
-| Label | Stable `id` | Evidence fields |
+Entity lookup is exact by graph ID or provider source ID. Owners/admins can create case-insensitive workspace aliases only after the target identifier resolves to one accessible graph entity; duplicate aliases are rejected. Ambiguous matches return candidates for review but no selected entity, and candidate records do not count as agent evidence. Alias assignments are explicit workspace control-plane data, not fuzzy identity inference.
+
+Supabase Postgres is authoritative for workspace identity, membership, investigations, current facts, fact revisions, task leases/handoffs, action proposals, approvals, idempotency, and audit events. FalkorDB stores provenance-rich entities for fraud investigation, security triage, and codebase work, plus the relationships agents traverse across each workflow. Workflow records should be projected to graph nodes through a transactional outbox, never by dual-writing from a request. Initial source entities use stable provider identifiers; display names are attributes, not identity keys.
+
+Each investigation stores a constrained `workflow_domain` (`fraud_investigation`, `security_triage`, `codebase_work`, or legacy `general`). New web investigations require an explicit domain, and the server selects the corresponding agent guidance from the persisted value rather than trusting a run-time client override. Domain guidance shapes evidence review and safe recommendations; it does not replace the missing fraud/deployment source integrations.
+
+## Planned graph entities
+
+| Label | Example source identity | Purpose |
 |---|---|---|
-| `Service` | `checkout` | `title`, `kind`, `source` |
-| `Deployment` | `deploy-1842`, `deploy-1837` | `title`, `kind`, `source` |
-| `Incident` | `INC-284` | `title`, `kind`, `source` |
-| `Decision` | `decision-retry` | `title`, `kind`, `source` |
-| `Person` | `maya-kim` | `title`, `kind`, `source` |
+| `Repository`, `Commit`, `PullRequest`, `File`, `CheckRun`, `CodeSymbol`, `SourceRevision` | GitHub node IDs, commit SHAs, check-run IDs, and provider revision IDs | Connect code changes to affected services, test/check outcomes, and investigations while retaining superseded source evidence. |
+| `Account`, `Transaction`, `Device`, `Counterparty`, `FraudCase` | Stable IDs from a selected fraud/case source | Connect risk signals and prior case outcomes; correlations remain signals, not proof. |
+| `Finding`, `Advisory`, `Vulnerability`, `Dependency` | Scanner/advisory identifiers and package coordinates | Trace findings to affected repository versions, services, and deployments. |
+| `Service`, `Deployment`, `Incident`, `Runbook` | Provider IDs, incident IDs, canonical URLs | Represent runtime systems, events, operating guidance, and relationships. |
+| `Person`, `Team`, `Decision`, `Fact` | Provider IDs or reviewed stable keys | Preserve ownership and rationale with explicit provenance and current/history state. |
+| `Investigation`, `InvestigationEvent`, `Attempt`, `Task`, `Action`, `Trace` | Waypoint-generated UUIDs | Connect durable reasoning inputs, previous attempts, coordination, approvals, and observed results. |
 
-## Relationships
+Every knowledge-bearing item must retain source ID, source revision, capture time, and access policy. Imported content is data, never permission or action approval. The agent exposes task, fact, and action-write tools only for explicit user requests; source text alone cannot unlock proposal creation. Derived answers and actions cannot have broader access than their evidence.
 
-- `(Service)-[:HAS_DEPLOYMENT]->(Deployment)`
-- `(Deployment)-[:TRIGGERED]->(Incident)`
-- `(Incident)-[:INFORMED_BY]->(Decision)`
-- `(Incident)-[:HAS_PREVIOUS_ATTEMPT]->(Deployment)`
-- `(Service)-[:OWNED_BY]->(Person)`
+## Planned relationships
 
-The seed uses fixed synthetic literals with `MERGE` clauses, so rerunning it updates the same six demo nodes and five relationships. It checks that all six expected node IDs exist before reporting success.
+`CONTAINS`, `HAS_COMMIT`, `HAS_ISSUE`, `HAS_PULL_REQUEST`, `CHANGED_FILE`, `HAS_CHECK_RUN`, `HAS_REVISION`, `CHANGED_IN`, `DEPENDS_ON`, `DEPLOYED_AS`, `TRIGGERED`, `AFFECTS`, `INITIATED_BY`, `USED_DEVICE`, `LINKED_TO_CASE`, `DECLARED_IN`, `BUILDS`, `RUNNING_AS`, `OWNED_BY`, `INFORMED_BY`, `PREVIOUS_ATTEMPT`, `SUPPORTED_BY`, `SUPERSEDES`, `HAS_EVENT`, `HAS_TASK`, `ASSIGNED_TO`, `HANDED_OFF_TO`, `PROPOSED`, `APPROVED`, `EXECUTED`, and `VERIFIED` are added as source integrations require them. Avoid fuzzy identity merges; ambiguous entities remain separate for review.
 
-## Retrieval query
+## Current implementation status
 
-The Ask endpoint accepts a bounded question string and only supports the seeded checkout incident today. User text is never interpolated into Cypher; the route queries the fixed demo incident ID and traverses no more than four graph hops:
-
-```cypher
-MATCH path = (incident:Incident {id: $incidentId})-[*0..4]-(related)
-RETURN DISTINCT coalesce(related.id, related.title) AS id,
-       coalesce(related.title, related.name, related.id) AS title,
-       coalesce(related.kind, head(labels(related))) AS kind,
-       coalesce(related.source, "") AS source,
-       [node IN nodes(path) | coalesce(node.title, node.name, node.id)] AS path
-LIMIT 30
-```
-
-The application returns source IDs and paths with the response. It assembles a short deterministic summary from returned records; this slice does not call an LLM or claim general-purpose question answering.
+Workspace-scoped investigations, append-only events, versioned current facts and fact history, evidence-bound attempts, tasks, expiring claims, acknowledged handoffs, action proposals, and approval decisions have Supabase schema and API implementations; the checked-in migrations have not been applied or runtime-verified. Fact mutations use expected-version checks and idempotency keys. Retrying a failed attempt requires a changed condition snapshot, explanation, and source-version evidence. Versioned transactional outbox rows, a host-scheduled Bun worker command, and bounded FalkorDB projections for workflow facts and attempts are implemented but not deployed or runtime-verified. An owner/admin GitHub sync path imports bounded commits, issues, pull requests, file metadata, up to 100 default-branch-head check runs, and changed-file metadata for the first ten returned pull requests into an RLS-protected current-record store; pull requests link to stable `File` nodes through source-versioned `CHANGED_FILE` edges; check-run nodes link to their current commit; changed records archive immutable previous provider versions as `SourceRevision` nodes. Partial changed-file imports preserve earlier paths; other partial imports leave unfetched records intact. Source removal cascades to archived data and projection tombstones. Optional Dependabot alert imports use a separate single-repository read token; findings, revisions, and graph paths are restricted to owners/admins. GitHub marks this alert API as public preview and subject to change. These migrations and cloud behaviors remain unverified. Deployment discovery and fraud-case sources are not imported yet. Synthetic fixtures cover all three workflow domains but are not live integrations. The old synthetic seed and fixed INC-284 Ask response have been removed. Workspace Ask now creates a durable investigation and delegates to the shared agent runner with all write permissions disabled; model configuration, real sources, and answer quality remain unverified. See the [implementation tracker](../IMPLEMENTATION_TRACKER.md) for evidence and gates.

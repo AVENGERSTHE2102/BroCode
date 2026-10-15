@@ -1,0 +1,45 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { validateFactInput } from "../src/lib/facts";
+
+const input = { factKey: "service.owner", value: "platform", provenance: [{ sourceId: "github:issue:1", version: "rev-2" }], expectedVersion: 0, idempotencyKey: "candidate-1" };
+assert.equal(validateFactInput(input).ok, true);
+assert.equal(validateFactInput({ ...input, provenance: [] }).ok, false);
+
+const migration = await readFile(new URL("../supabase/migrations/202610150015_fact_candidate_quarantine.sql", import.meta.url), "utf8");
+const sourceValidation = await readFile(new URL("../supabase/migrations/202610150016_fact_candidate_source_validation.sql", import.meta.url), "utf8");
+assert.match(migration, /create table public\.investigation_fact_candidates/i);
+assert.match(migration, /alter table public\.investigation_fact_candidates enable row level security/i);
+assert.match(migration, /role in \('owner', 'admin'\)/i);
+assert.match(migration, /create function public\.propose_investigation_fact_candidate/i);
+assert.match(migration, /create function public\.review_investigation_fact_candidate/i);
+assert.match(migration, /public\.set_investigation_fact\(/i);
+assert.match(migration, /revoke all on function public\.set_investigation_fact\([\s\S]*from authenticated/i);
+assert.match(sourceValidation, /before update of status on public\.investigation_fact_candidates/i);
+assert.match(sourceValidation, /create table public\.workspace_source_versions/i);
+assert.match(sourceValidation, /grant execute on function public\.register_workspace_source_version\([\s\S]*to service_role/i);
+assert.match(sourceValidation, /register_github_current_source_version/i);
+assert.match(sourceValidation, /register_github_historical_source_version/i);
+assert.match(sourceValidation, /remove_github_historical_source_version/i);
+assert.match(sourceValidation, /insert into public\.workspace_source_versions[\s\S]*from public\.workspace_github_records/i);
+assert.match(sourceValidation, /insert into public\.workspace_source_versions[\s\S]*from public\.workspace_github_record_versions/i);
+assert.match(sourceValidation, /s\.access_scope = 'workspace'[\s\S]*m\.role in \('owner', 'admin'\)/i);
+assert.match(sourceValidation, /source_id ~ '\^\[a-z\]\[a-z0-9_-\]\*:'/i);
+assert.match(sourceValidation, /public\.workspace_source_version_accessible\(/);
+assert.match(sourceValidation, /split_part\(source_id, ':', 1\) = source_type/i);
+assert.match(sourceValidation, /s\.source_type = split_part\(p_source_id, ':', 1\)/i);
+assert.match(sourceValidation, /using errcode = '23514'/i);
+assert.match(await readFile(new URL("../src/lib/facts.ts", import.meta.url), "utf8"), /error\?\.code === "23514"[\s\S]*Candidate provenance does not match an available workspace source version/);
+const projector = await readFile(new URL("../src/lib/graph-projection.ts", import.meta.url), "utf8");
+assert.doesNotMatch(projector, /investigation_fact_candidates/);
+
+const remember = await readFile(new URL("../src/lib/agent-tools.ts", import.meta.url), "utf8");
+assert.match(remember, /proposeInvestigationFactCandidate\(request, investigationId, fact\)/);
+const factsRoute = await readFile(new URL("../src/app/api/investigations/[id]/facts/route.ts", import.meta.url), "utf8");
+assert.match(factsRoute, /proposeInvestigationFactCandidate/);
+assert.doesNotMatch(factsRoute, /setInvestigationFact/);
+assert.match(factsRoute, /result\.ok \? 202/);
+const reviewRoute = await readFile(new URL("../src/app/api/investigations/[id]/facts/candidates/[candidateId]/review/route.ts", import.meta.url), "utf8");
+assert.match(reviewRoute, /origin.*new URL/);
+assert.match(reviewRoute, /reviewFactCandidate\(request, id, candidateId, parsed\.value\)/);
+console.log("Fact candidates stay quarantined until owner/admin review.");
