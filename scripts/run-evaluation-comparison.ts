@@ -29,8 +29,78 @@ type ModeResult = {
 const encoder = new TextEncoder();
 const MAX_INPUT_BUDGET = 128_000;
 const MAX_OUTPUT_TOKENS = 1800;
-const MODES = ["graph_agent", "text_retrieval", "markdown_memory"] as const;
-type Mode = typeof MODES[number];
+type Mode = "graph_agent" | "text_retrieval" | "markdown_memory";
+
+type StrategyContext = {
+  testCase: Fixture["cases"][number];
+  records: EvalRecord[];
+  domain: WorkflowDomain;
+  inputBudget: number;
+  model: NonNullable<ReturnType<typeof readModelConfig>>;
+  seenIds: Set<string>;
+  observed: Map<string, AgentEvidenceRef>;
+  complete: (messages: Parameters<typeof completeWithModel>[0], tools: ReturnType<typeof openAiToolDefinitions>) => ReturnType<typeof completeWithModel>;
+};
+type StrategyOutcome = { answer: ReturnType<typeof validateAgentAnswer>; toolCalls: number };
+type RetrievalStrategy = { name: Mode; run: (ctx: StrategyContext) => Promise<StrategyOutcome> };
+
+const graphAgentStrategy: RetrievalStrategy = {
+  name: "graph_agent",
+  async run(ctx) {
+    const names = new Set(["resolve_entity", "trace_entity"]);
+    const tools = openAiToolDefinitions(names);
+    const graph = fixtureGraph(ctx.testCase, ctx.records);
+    let toolCalls = 0;
+    const result = await runToolSelectionLoop(ctx.testCase.question, ctx.testCase.id, tools, {
+      complete: ctx.complete,
+      invoke: async (name, args) => {
+        toolCalls++;
+        if (name === "resolve_entity") {
+          const found = graph.nodes.find((item) => item.id === args.identifier || item.sourceId === args.identifier);
+          return found ? { ok: true, value: { resolved: true, entity: found } } : { ok: true, value: { resolved: false, ambiguous: false, candidates: [] } };
+        }
+        if (name === "trace_entity") {
+          const paths = graphPaths(graph.nodes, graph.edges, String(args.entityId ?? ""));
+          return { ok: true, value: { paths } };
+        }
+        return { ok: false, error: "Tool is unavailable in this evaluation mode." };
+      },
+      onToolCall: async ({ result }) => {
+        const captured = collectEvalEvidence(result);
+        captured.records.forEach((id) => ctx.seenIds.add(id));
+        captured.refs.forEach((ref, key) => ctx.observed.set(key, ref));
+      },
+    }, { operationKey: `eval:${ctx.testCase.id}`, workflowDomain: ctx.domain });
+    return { answer: result, toolCalls };
+  },
+};
+
+function contextStrategy(name: "text_retrieval" | "markdown_memory", retrieve: (records: EvalRecord[], question: string) => EvalRecord[]): RetrievalStrategy {
+  return {
+    name,
+    async run(ctx) {
+      const retrieved = retrieve(ctx.records, ctx.testCase.question);
+      const context = fitContext(retrieved, ctx.testCase, ctx.domain, ctx.inputBudget, ctx.model.model);
+      context.records.forEach((record) => {
+        ctx.seenIds.add(record.id);
+        ctx.observed.set(`${record.sourceId}\u0000${record.version}`, { sourceId: record.sourceId, version: record.version });
+      });
+      const messages = [
+        { role: "system" as const, content: buildAgentSystemPrompt(ctx.domain) },
+        { role: "user" as const, content: `Use only the authorized synthetic evidence below. Every factual claim must cite exact sourceId and version values.\n\n${context.text}\n\nQuestion: ${ctx.testCase.question}` },
+      ];
+      const completion = await ctx.complete(messages, []);
+      return { answer: validateAgentAnswer(completion.choices?.[0]?.message?.content, ctx.observed), toolCalls: 0 };
+    },
+  };
+}
+
+const STRATEGIES: RetrievalStrategy[] = [
+  graphAgentStrategy,
+  contextStrategy("text_retrieval", (records, question) => retrieveEvalText(records, question)),
+  contextStrategy("markdown_memory", (records) => records),
+];
+
 const config = readModelConfig();
 if (!config) {
   console.error("Set AI_BASE_URL, AI_API_KEY, and AI_MODEL to run the comparison; values are never printed.");
@@ -55,12 +125,12 @@ if (!config) {
       for (const testCase of selectedCases) {
         const domain = testCase.domain ?? "general";
         const records = visibleEvalRecords(testCase);
-        for (const mode of MODES) {
-          const outcome = await runCase(mode, testCase, records, domain, budgetValue, config);
+        for (const strategy of STRATEGIES) {
+          const outcome = await runCase(strategy, testCase, records, domain, budgetValue, config);
           results.push({ caseId: testCase.id, domain: workflowDomainLabel(domain), dataClass: testCase.dataClass, mode: outcome });
         }
       }
-      const summary = MODES.map((mode) => {
+      const summary = STRATEGIES.map(({ name: mode }) => {
         const selected = results.filter((item) => item.mode.mode === mode);
         const values = selected.map((item) => item.mode);
         const completed = values.filter((value) => value.status === "completed");
@@ -91,9 +161,10 @@ if (!config) {
 }
 
 async function runCase(
-  mode: Mode, testCase: Fixture["cases"][number], records: EvalRecord[], domain: WorkflowDomain,
+  strategy: RetrievalStrategy, testCase: Fixture["cases"][number], records: EvalRecord[], domain: WorkflowDomain,
   inputBudget: number, model: NonNullable<ReturnType<typeof readModelConfig>>,
 ): Promise<ModeResult> {
+  const mode = strategy.name;
   let inputBytes = 0;
   let promptTokens = 0;
   let hasPromptTokens = true;
@@ -121,56 +192,18 @@ async function runCase(
     remainingOutputTokens -= used;
     if (remainingOutputTokens < 0) throw new Error("output_token_budget_exceeded");
   };
+  const complete: StrategyContext["complete"] = async (messages, tools) => {
+    account(messages, tools);
+    if (remainingOutputTokens < 1) throw new Error("output_token_budget_exceeded");
+    const completion = await completeWithModel(messages, tools, model, undefined, remainingOutputTokens);
+    countCompletion(completion);
+    return completion;
+  };
 
   try {
-    let answer: ReturnType<typeof validateAgentAnswer>;
-    if (mode === "graph_agent") {
-      const names = new Set(["resolve_entity", "trace_entity"]);
-      const tools = openAiToolDefinitions(names);
-      const graph = fixtureGraph(testCase, records);
-      const result = await runToolSelectionLoop(testCase.question, testCase.id, tools, {
-        complete: async (messages, suppliedTools) => {
-          account(messages, suppliedTools);
-          if (remainingOutputTokens < 1) throw new Error("output_token_budget_exceeded");
-          const completion = await completeWithModel(messages, suppliedTools, model, undefined, remainingOutputTokens);
-          countCompletion(completion);
-          return completion;
-        },
-        invoke: async (name, args) => {
-          toolCalls++;
-          if (name === "resolve_entity") {
-            const found = graph.nodes.find((item) => item.id === args.identifier || item.sourceId === args.identifier);
-            return found ? { ok: true, value: { resolved: true, entity: found } } : { ok: true, value: { resolved: false, ambiguous: false, candidates: [] } };
-          }
-          if (name === "trace_entity") {
-            const paths = graphPaths(graph.nodes, graph.edges, String(args.entityId ?? ""));
-            return { ok: true, value: { paths } };
-          }
-          return { ok: false, error: "Tool is unavailable in this evaluation mode." };
-        },
-        onToolCall: async ({ result }) => {
-          const captured = collectEvalEvidence(result);
-          captured.records.forEach((id) => seenIds.add(id));
-          captured.refs.forEach((ref, key) => observed.set(key, ref));
-        },
-      }, { operationKey: `eval:${testCase.id}`, workflowDomain: domain });
-      answer = result;
-    } else {
-      const retrieved = mode === "text_retrieval" ? retrieveEvalText(records, testCase.question) : records;
-      const context = fitContext(retrieved, testCase, domain, inputBudget, model.model);
-      context.records.forEach((record) => {
-        seenIds.add(record.id);
-        observed.set(`${record.sourceId}\u0000${record.version}`, { sourceId: record.sourceId, version: record.version });
-      });
-      const messages = [
-        { role: "system" as const, content: buildAgentSystemPrompt(domain) },
-        { role: "user" as const, content: `Use only the authorized synthetic evidence below. Every factual claim must cite exact sourceId and version values.\n\n${context.text}\n\nQuestion: ${testCase.question}` },
-      ];
-      account(messages, []);
-      const completion = await completeWithModel(messages, [], model, undefined, MAX_OUTPUT_TOKENS);
-      countCompletion(completion);
-      answer = validateAgentAnswer(completion.choices?.[0]?.message?.content, observed);
-    }
+    const outcome = await strategy.run({ testCase, records, domain, inputBudget, model, seenIds, observed, complete });
+    const answer = outcome.answer;
+    toolCalls = outcome.toolCalls;
     const claimScores = lexicalClaimScores(testCase.expected.claims, answer.claims.map((claim) => claim.text));
     const pathCoverage = expectedPathCoverage(testCase.expected.evidencePaths, seenIds);
     const expectedAbstention = testCase.expected.outcome === "abstain";
