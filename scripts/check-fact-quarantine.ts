@@ -40,6 +40,6 @@ assert.match(factsRoute, /proposeInvestigationFactCandidate/);
 assert.doesNotMatch(factsRoute, /setInvestigationFact/);
 assert.match(factsRoute, /result\.ok \? 202/);
 const reviewRoute = await readFile(new URL("../src/app/api/investigations/[id]/facts/candidates/[candidateId]/review/route.ts", import.meta.url), "utf8");
-assert.match(reviewRoute, /origin.*new URL/);
+assert.match(reviewRoute, /requireSameOrigin/);
 assert.match(reviewRoute, /reviewFactCandidate\(request, id, candidateId, parsed\.value\)/);
 console.log("Fact candidates stay quarantined until owner/admin review.");

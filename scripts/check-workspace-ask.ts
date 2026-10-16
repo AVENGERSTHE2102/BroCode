@@ -16,7 +16,7 @@ assert.match(panel, /workflowDomain/);
 assert.match(panel, /Choose workflow/);
 assert.match(route, /import \{ POST as runInvestigation \}/);
 assert.match(route, /requestedWrites: \{ proposals: false, factCandidates: false, taskUpdates: false \}/);
-assert.match(route, /\["authorization", "x-waypoint-workspace"\]/);
+assert.match(route, /\["authorization", "x-waypoint-workspace", "origin"\]/);
 assert.match(route, /runInvestigation\(runRequest/);
 assert.match(panel, /if \(!runResponse\.ok\) throw/);
 assert.match(panel, /href=\{`\/investigations\/\$\{investigation\.id\}`\}/);

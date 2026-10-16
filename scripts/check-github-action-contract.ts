@@ -134,7 +134,7 @@ assert.match(migration, /status = 'succeeded'/i);
 assert.match(migration, /create function public\.finish_action_proposal_execution/i);
 const executeRoute = await readFile(new URL("../src/app/api/investigations/[id]/action-proposals/[proposalId]/execute/route.ts", import.meta.url), "utf8");
 assert.match(executeRoute, /executeActionProposal/);
-assert.match(executeRoute, /request\.headers\.get\("origin"\) !== new URL\(request\.url\)\.origin/);
+assert.match(executeRoute, /requireSameOrigin/);
 const evidenceMigration = await readFile(new URL("../supabase/migrations/202610150019_action_proposal_source_validation.sql", import.meta.url), "utf8");
 assert.match(evidenceMigration, /workspace_source_version_accessible\([\s\S]*evidence\.value ->> 'sourceId',[\s\S]*evidence\.value ->> 'version'/i);
 assert.match(evidenceMigration, /jsonb_typeof\(new\.evidence\) is distinct from 'array'/i);

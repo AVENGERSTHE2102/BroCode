@@ -3,6 +3,7 @@ import { withWorkspaceGraph } from "@/lib/falkordb";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { workspaceSupabase } from "@/lib/workspace-supabase";
 import { readJsonBody } from "@/lib/read-json-body";
+import { requireSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
 const isAdmin = (role: string) => role === "owner" || role === "admin";
@@ -18,6 +19,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!requireSameOrigin(request)) return NextResponse.json({ error: "Aliases must be requested from this application origin." }, { status: 403 });
   const access = await workspaceSupabase(request);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!isAdmin(access.workspace.role)) return NextResponse.json({ error: "Workspace admin access is required." }, { status: 403 });

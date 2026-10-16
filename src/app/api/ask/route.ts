@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const runId = "runId" in body ? body.runId : undefined;
   if (runId !== undefined && (typeof runId !== "string" || !UUID.test(runId))) return NextResponse.json({ error: "Run ID is invalid." }, { status: 400 });
   const headers = new Headers({ "content-type": "application/json" });
-  for (const name of ["authorization", "x-waypoint-workspace"]) {
+  for (const name of ["authorization", "x-waypoint-workspace", "origin"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }

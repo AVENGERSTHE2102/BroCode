@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createInvestigation, listInvestigations } from "@/lib/investigations";
 import { readJsonBody } from "@/lib/read-json-body";
+import { requireSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!requireSameOrigin(request)) return NextResponse.json({ error: "Investigations must be requested from this application origin." }, { status: 403 });
   const parsed = await readJsonBody(request, 16_384);
   if (!parsed.ok) return NextResponse.json({ error: parsed.reason === "too_large" ? "Request body is too large." : "Request body must be valid JSON." }, { status: parsed.reason === "too_large" ? 413 : 400 });
   try {

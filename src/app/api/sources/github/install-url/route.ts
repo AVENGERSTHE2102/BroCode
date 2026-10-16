@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createGitHubInstallState } from "@/lib/github-app";
 import { workspaceSupabase } from "@/lib/workspace-supabase";
+import { requireSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  if (!requireSameOrigin(request)) return NextResponse.json({ error: "GitHub installation must be requested from this application origin." }, { status: 403 });
   const access = await workspaceSupabase(request);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!['owner', 'admin'].includes(access.workspace.role)) return NextResponse.json({ error: "Workspace admin access is required." }, { status: 403 });

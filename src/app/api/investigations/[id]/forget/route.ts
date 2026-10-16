@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { workspaceSupabase } from "@/lib/workspace-supabase";
+import { requireSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ id: string }> };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request, { params }: Context) {
+  if (!requireSameOrigin(request)) return NextResponse.json({ error: "Forget requests must be requested from this application origin." }, { status: 403 });
   try {
     const { id } = await params;
     const current = await workspaceSupabase(request);

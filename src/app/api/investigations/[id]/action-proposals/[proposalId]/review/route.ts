@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { reviewActionProposal } from "@/lib/action-proposals";
 import { readJsonBody } from "@/lib/read-json-body";
+import { requireSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ id: string; proposalId: string }> };
 
 export async function POST(request: Request, { params }: Context) {
-  if (request.headers.get("origin") !== new URL(request.url).origin) {
+  if (!requireSameOrigin(request)) {
     return NextResponse.json({ error: "Proposal review must be requested from this application origin." }, { status: 403 });
   }
   const parsed = await readJsonBody(request, 4096);

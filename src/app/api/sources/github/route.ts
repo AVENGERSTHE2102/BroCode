@@ -3,6 +3,7 @@ import { verifyGitHubRepositoryAccess } from "@/lib/github-app";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { workspaceSupabase } from "@/lib/workspace-supabase";
 import { readJsonBody } from "@/lib/read-json-body";
+import { requireSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
 type GitHubSourceRow = { id: string; repository_id: number; full_name: string; html_url: string; default_branch: string; provider_updated_at: string | null; created_at: string };
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!requireSameOrigin(request)) return NextResponse.json({ error: "GitHub source connections must be requested from this application origin." }, { status: 403 });
   const access = await workspaceSupabase(request);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!['owner', 'admin'].includes(access.workspace.role)) return NextResponse.json({ error: "Workspace admin access is required." }, { status: 403 });

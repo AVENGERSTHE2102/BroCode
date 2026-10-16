@@ -7,6 +7,7 @@ import { buildMcpTracePayload } from "@/lib/mcp-trace";
 import { readJsonBody } from "@/lib/read-json-body";
 import { workspaceSupabase } from "@/lib/workspace-supabase";
 import { isWorkflowDomain } from "@/lib/workflow-domains";
+import { requireSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ id: string }> };
@@ -15,6 +16,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 class InvestigationDeletedError extends Error {}
 
 export async function POST(request: Request, { params }: Context) {
+  if (!requireSameOrigin(request)) return NextResponse.json({ error: "Investigation runs must be requested from this application origin." }, { status: 403 });
   const access = await workspaceSupabase(request);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const rateLimit = await access.supabase.rpc("check_workspace_rate_limit", {

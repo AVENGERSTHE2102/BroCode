@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { appendInvestigationEvent, listInvestigationEvents } from "@/lib/investigations";
 import { readJsonBody } from "@/lib/read-json-body";
+import { requireSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,7 @@ export async function GET(request: Request, { params }: Context) {
 }
 
 export async function POST(request: Request, { params }: Context) {
+  if (!requireSameOrigin(request)) return NextResponse.json({ error: "Events must be requested from this application origin." }, { status: 403 });
   const parsed = await readJsonBody(request, 65_536);
   if (!parsed.ok) return NextResponse.json({ error: parsed.reason === "too_large" ? "Event request exceeds 64 KB." : "Request body must be valid JSON." }, { status: parsed.reason === "too_large" ? 413 : 400 });
   try {
