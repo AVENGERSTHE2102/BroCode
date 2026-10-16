@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { readGitHubRepositorySnapshot } from "@/lib/github-app";
 import { toGitHubImportRecords, toGitHubSecurityImportRecords, type GitHubSourceForImport } from "@/lib/github-source-import";
+import { readJsonBody } from "@/lib/read-json-body";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { workspaceSupabase } from "@/lib/workspace-supabase";
 
@@ -15,8 +16,11 @@ export async function POST(request: Request, context: { params: Promise<{ source
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sourceId)) {
     return NextResponse.json({ error: "GitHub source ID is invalid." }, { status: 400 });
   }
+  const parsedBody = await readJsonBody(request, 256);
+  const fullResync = parsedBody.ok && parsedBody.value && typeof parsedBody.value === "object" && "fullResync" in parsedBody.value
+    && (parsedBody.value as { fullResync?: unknown }).fullResync === true;
   const { data, error } = await access.supabase.from("workspace_github_sources")
-    .select("id, installation_id, repository_id, full_name, html_url, default_branch, provider_updated_at")
+    .select("id, installation_id, repository_id, full_name, html_url, default_branch, provider_updated_at, last_synced_at, last_synced_commit_sha")
     .eq("workspace_id", access.workspace.id).eq("id", sourceId).maybeSingle();
   if (error) return NextResponse.json({ error: "GitHub source could not be loaded." }, { status: 503 });
   if (!data) return NextResponse.json({ error: "GitHub source was not found in this workspace." }, { status: 404 });
@@ -39,12 +43,12 @@ export async function POST(request: Request, context: { params: Promise<{ source
     didStart = !started.error && started.data === true;
   } catch {}
   if (!didStart) return NextResponse.json({ error: "GitHub sync could not be started." }, { status: 503 });
-  const finishSync = async (status: "succeeded" | "partial" | "failed", counts: Record<string, number>, changedRecords: number, partialErrors: string[], errorCode: "provider_error" | "storage_error" | "sync_error" | null) => {
+  const finishSync = async (status: "succeeded" | "partial" | "failed", counts: Record<string, number>, changedRecords: number, partialErrors: string[], errorCode: "provider_error" | "storage_error" | "sync_error" | null, syncedCommitSha: string | null = null) => {
     try {
       const result = await admin.rpc("finish_workspace_github_sync", {
         p_workspace_id: access.workspace.id, p_source_id: source.sourceId, p_run_id: runId,
         p_status: status, p_counts: counts, p_changed_records: changedRecords,
-        p_partial_errors: partialErrors, p_error_code: errorCode,
+        p_partial_errors: partialErrors, p_error_code: errorCode, p_synced_commit_sha: syncedCommitSha,
       });
       return !result.error && result.data === true;
     } catch { return false; }
@@ -52,7 +56,10 @@ export async function POST(request: Request, context: { params: Promise<{ source
 
   let snapshot;
   try {
-    snapshot = await readGitHubRepositorySnapshot(Number(data.installation_id), source.repositoryId, source.fullName);
+    snapshot = await readGitHubRepositorySnapshot(Number(data.installation_id), source.repositoryId, source.fullName, {
+      since: fullResync ? null : data.last_synced_at,
+      previousCommitSha: fullResync ? null : data.last_synced_commit_sha,
+    });
   } catch {
     await finishSync("failed", {}, 0, [], "provider_error");
     return NextResponse.json({ error: "GitHub repository metadata could not be imported." }, { status: 502 });
@@ -86,10 +93,10 @@ export async function POST(request: Request, context: { params: Promise<{ source
       } catch { partialErrors.push("Dependabot findings could not be saved; repository records were imported."); }
     }
     const status = partialErrors.length ? "partial" : "succeeded";
-    const statusRecorded = await finishSync(status, counts, changedRecords, partialErrors, null);
+    const statusRecorded = await finishSync(status, counts, changedRecords, partialErrors, null, snapshot.headCommitSha);
     return NextResponse.json({
       sourceId: source.sourceId, repository: snapshot.fullName, capturedAt,
-      counts, changedRecords, projection: "queued", partialErrors, status,
+      counts, changedRecords, projection: "queued", partialErrors, status, incremental: snapshot.incremental,
       ...(statusRecorded ? {} : { statusWarning: "Sync data was imported but its latest status could not be recorded." }),
     });
   } catch {

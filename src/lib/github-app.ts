@@ -265,10 +265,16 @@ export async function readGitHubRepositorySnapshot(
   installationId: number,
   repositoryId: number,
   fullName: string,
-  options: { env?: Record<string, string | undefined>; fetch?: GitHubFetch } = {},
+  options: {
+    env?: Record<string, string | undefined>; fetch?: GitHubFetch;
+    since?: string | null; previousCommitSha?: string | null;
+  } = {},
 ) {
   if (!positiveId(installationId) || !positiveId(repositoryId)
     || !/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(fullName)) throw new Error("GitHub repository selection is invalid.");
+  const since = typeof options.since === "string" && Number.isFinite(Date.parse(options.since)) ? options.since : null;
+  const previousCommitSha = typeof options.previousCommitSha === "string" && /^[a-f0-9]{40}$/i.test(options.previousCommitSha)
+    ? options.previousCommitSha : null;
   const { appId, privateKey } = config(options.env);
   const fetcher = options.fetch ?? fetch;
   const appToken = createGitHubAppJwt(appId, privateKey);
@@ -286,6 +292,7 @@ export async function readGitHubRepositorySnapshot(
   const prefix = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
   const partialErrors: string[] = [];
   const items: GitHubSnapshotItem[] = [];
+  let resolvedHeadSha: string | null = null;
   const clip = (value: unknown, max = 4000) => typeof value === "string" ? value.slice(0, max) : "";
   const githubUrl = (value: unknown) => {
     if (typeof value !== "string") return "";
@@ -308,14 +315,20 @@ export async function readGitHubRepositorySnapshot(
     if (repository.id !== repositoryId || typeof repository.full_name !== "string" || repository.full_name.toLowerCase() !== fullName.toLowerCase()) {
       throw new Error("GitHub repository identity does not match the selected repository.");
     }
+    const sinceParam = since ? `&since=${encodeURIComponent(since)}` : "";
     const sections = await Promise.allSettled([
-      pages(`${prefix}/commits`),
-      pages(`${prefix}/issues?state=all`),
-      pages(`${prefix}/pulls?state=all`),
+      pages(`${prefix}/commits${since ? `?since=${encodeURIComponent(since)}` : ""}`),
+      pages(`${prefix}/issues?state=all${sinceParam}`),
+      pages(`${prefix}/pulls?state=all&sort=updated&direction=desc`),
     ]);
     const commitRows = sections[0].status === "fulfilled" ? sections[0].value : (partialErrors.push("Commits could not be imported."), []);
     const issueRows = sections[1].status === "fulfilled" ? sections[1].value : (partialErrors.push("Issues could not be imported."), []);
-    const pullRows = sections[2].status === "fulfilled" ? sections[2].value : (partialErrors.push("Pull requests could not be imported."), []);
+    const sinceMs = since ? Date.parse(since) : null;
+    const allPullRows = sections[2].status === "fulfilled" ? sections[2].value : (partialErrors.push("Pull requests could not be imported."), []);
+    const pullRows = sinceMs === null ? allPullRows : allPullRows.filter((item) => {
+      const updatedMs = Date.parse(typeof item.updated_at === "string" ? item.updated_at : "");
+      return !Number.isFinite(updatedMs) || updatedMs >= sinceMs;
+    });
     for (const item of commitRows) {
       const sha = typeof item.sha === "string" ? item.sha : "";
       if (!/^[a-f0-9]{40}$/i.test(sha)) continue;
@@ -397,16 +410,38 @@ export async function readGitHubRepositorySnapshot(
                 summary: clip(run.output && typeof run.output === "object" ? (run.output as Record<string, unknown>).summary : "", 3000) } });
           }
         } catch { partialErrors.push("Default-branch check runs could not be imported."); }
-        const tree = await githubJson<{ truncated?: unknown; tree?: unknown }>(`${prefix}/git/trees/${sha}?recursive=1`, token, "GET", undefined, fetcher);
-        if (!Array.isArray(tree.tree)) throw new Error("GitHub tree response is invalid.");
-        const files = tree.tree.filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null && entry.type === "blob");
-        if (tree.truncated === true || files.length > 500) partialErrors.push("The repository file tree exceeded the 500-file import limit.");
-        for (const file of files.slice(0, 500)) {
-          if (typeof file.path !== "string" || typeof file.sha !== "string") continue;
-          const path = file.path.split("/").map(encodeURIComponent).join("/");
-          items.push({ kind: "file", sourceId: `github:file:${repositoryId}:${file.path}`, sourceVersion: file.sha,
-            title: file.path.split("/").at(-1) ?? file.path, body: "", url: `https://github.com/${fullName}/blob/${sha}/${path}`,
-            updatedAt: "", path: file.path.slice(0, 1000), author: "" });
+        resolvedHeadSha = sha;
+        const pushFile = (filePath: unknown, fileSha: unknown) => {
+          if (typeof filePath !== "string" || typeof fileSha !== "string" || !filePath || !fileSha) return;
+          const path = filePath.split("/").map(encodeURIComponent).join("/");
+          items.push({ kind: "file", sourceId: `github:file:${repositoryId}:${filePath}`, sourceVersion: fileSha,
+            title: filePath.split("/").at(-1) ?? filePath, body: "", url: `https://github.com/${fullName}/blob/${sha}/${path}`,
+            updatedAt: "", path: filePath.slice(0, 1000), author: "" });
+        };
+        const fullTreeWalk = async () => {
+          const tree = await githubJson<{ truncated?: unknown; tree?: unknown }>(`${prefix}/git/trees/${sha}?recursive=1`, token, "GET", undefined, fetcher);
+          if (!Array.isArray(tree.tree)) throw new Error("GitHub tree response is invalid.");
+          const files = tree.tree.filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null && entry.type === "blob");
+          if (tree.truncated === true || files.length > 500) partialErrors.push("The repository file tree exceeded the 500-file import limit.");
+          for (const file of files.slice(0, 500)) pushFile(file.path, file.sha);
+        };
+        if (previousCommitSha === sha) {
+          // Default-branch head is unchanged since the last sync; no file metadata changed.
+        } else if (previousCommitSha) {
+          try {
+            const comparison = await githubJson<{ files?: unknown; status?: unknown }>(
+              `${prefix}/compare/${previousCommitSha}...${sha}`, token, "GET", undefined, fetcher);
+            if (!Array.isArray(comparison.files)) throw new Error("GitHub compare response is invalid.");
+            const changedFiles = comparison.files.filter((entry): entry is Record<string, unknown> =>
+              typeof entry === "object" && entry !== null && entry.status !== "removed");
+            if (changedFiles.length > 300) partialErrors.push("The incremental file diff exceeded the 300-file compare limit.");
+            for (const file of changedFiles.slice(0, 300)) pushFile(file.filename, file.sha);
+          } catch {
+            partialErrors.push("Incremental file diff failed (likely a force-push or rebased history); imported the full file tree instead.");
+            await fullTreeWalk();
+          }
+        } else {
+          await fullTreeWalk();
         }
       } catch { partialErrors.push("The default-branch file tree could not be imported."); }
     } else partialErrors.push("The repository has no default branch; file metadata was skipped.");
@@ -417,7 +452,7 @@ export async function readGitHubRepositorySnapshot(
     } catch {
       partialErrors.push("Dependabot alerts were not imported; check the App's Dependabot alerts read permission and repository setting.");
     }
-    return { repositoryId, fullName: repository.full_name, items, partialErrors };
+    return { repositoryId, fullName: repository.full_name, items, partialErrors, headCommitSha: resolvedHeadSha, incremental: since !== null || previousCommitSha !== null };
   } finally {
     await revokeInstallationToken(token, fetcher).catch(() => undefined);
   }

@@ -173,6 +173,51 @@ assert.deepEqual(snapshotCalls.filter((call) => call.method === "DELETE").map((c
   "Bearer snapshot-token", "Bearer snapshot-token", "Bearer snapshot-token", "Bearer snapshot-token",
 ]);
 
+assert.equal(snapshot.headCommitSha, "b".repeat(40));
+assert.equal(snapshot.incremental, false);
+
+const incrementalCalls: string[] = [];
+const incrementalFetch: typeof fetch = async (input, init) => {
+  const url = new URL(String(input));
+  incrementalCalls.push(url.pathname + url.search);
+  return snapshotFetch(input, init);
+};
+const incrementalSameHeadSnapshot = await readGitHubRepositorySnapshot(7, 321, "acme/service", {
+  env, fetch: incrementalFetch, since: "2026-10-01T00:00:00Z", previousCommitSha: "b".repeat(40),
+});
+assert.equal(incrementalSameHeadSnapshot.incremental, true);
+assert.equal(incrementalSameHeadSnapshot.items.some((item) => item.kind === "file"), false, "no file items expected when the previous head SHA matches the current one");
+assert.ok(incrementalCalls.some((call) => call.startsWith("/repos/acme/service/commits?since=2026-10-01T00%3A00%3A00Z")));
+assert.ok(incrementalCalls.some((call) => call.startsWith("/repos/acme/service/issues?state=all&since=2026-10-01T00%3A00%3A00Z")));
+assert.ok(incrementalCalls.every((call) => !call.startsWith("/repos/acme/service/git/trees/")), "a matching head SHA must skip the full tree walk");
+assert.ok(incrementalCalls.every((call) => !call.startsWith("/repos/acme/service/compare/")), "a matching head SHA must skip the compare diff too");
+
+const compareFetch: typeof fetch = async (input, init) => {
+  const url = new URL(String(input));
+  if (url.pathname === "/repos/acme/service/compare/" + "9".repeat(40) + "..." + "b".repeat(40)) {
+    return Response.json({ status: "ahead", files: [
+      { filename: "src/changed.ts", sha: "f".repeat(40), status: "modified" },
+      { filename: "src/removed.ts", status: "removed" },
+    ] });
+  }
+  return snapshotFetch(input, init);
+};
+const incrementalChangedHeadSnapshot = await readGitHubRepositorySnapshot(7, 321, "acme/service", {
+  env, fetch: compareFetch, previousCommitSha: "9".repeat(40),
+});
+assert.deepEqual(incrementalChangedHeadSnapshot.items.filter((item) => item.kind === "file").map((item) => item.path), ["src/changed.ts"]);
+
+const compareFailsFetch: typeof fetch = async (input, init) => {
+  const url = new URL(String(input));
+  if (url.pathname.startsWith("/repos/acme/service/compare/")) return Response.json({ message: "No common ancestor" }, { status: 404 });
+  return snapshotFetch(input, init);
+};
+const compareFallbackSnapshot = await readGitHubRepositorySnapshot(7, 321, "acme/service", {
+  env, fetch: compareFailsFetch, previousCommitSha: "9".repeat(40),
+});
+assert.ok(compareFallbackSnapshot.partialErrors.some((error) => error.includes("imported the full file tree instead")));
+assert.equal(compareFallbackSnapshot.items.find((item) => item.kind === "file")?.path, "src/app.ts", "compare failure must fall back to a full tree walk");
+
 const source = {
   workspaceId: "00000000-0000-4000-8000-000000000001", sourceId: "00000000-0000-4000-8000-000000000002",
   repositoryId: 321, fullName: "acme/service", htmlUrl: "https://github.com/acme/service", defaultBranch: "main", providerUpdatedAt: null,
