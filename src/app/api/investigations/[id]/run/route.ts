@@ -17,6 +17,11 @@ class InvestigationDeletedError extends Error {}
 export async function POST(request: Request, { params }: Context) {
   const access = await workspaceSupabase(request);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+  const rateLimit = await access.supabase.rpc("check_workspace_rate_limit", {
+    p_workspace_id: access.workspace.id, p_bucket: "agent_run", p_limit: 20, p_window_seconds: 60,
+  });
+  if (rateLimit.error) return NextResponse.json({ error: "Rate limit could not be checked." }, { status: 503 });
+  if (rateLimit.data !== true) return NextResponse.json({ error: "Too many investigation runs; wait a minute and try again." }, { status: 429 });
   const config = readModelConfig();
   if (!config) return NextResponse.json({ error: "The server-side model provider is not configured." }, { status: 503 });
   if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") return NextResponse.json({ error: "Content-Type must be application/json." }, { status: 415 });

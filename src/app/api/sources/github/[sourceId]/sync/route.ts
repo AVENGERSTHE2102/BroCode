@@ -12,6 +12,11 @@ export async function POST(request: Request, context: { params: Promise<{ source
   const access = await workspaceSupabase(request);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   if (!["owner", "admin"].includes(access.workspace.role)) return NextResponse.json({ error: "Workspace admin access is required." }, { status: 403 });
+  const rateLimit = await access.supabase.rpc("check_workspace_rate_limit", {
+    p_workspace_id: access.workspace.id, p_bucket: "github_sync", p_limit: 5, p_window_seconds: 60,
+  });
+  if (rateLimit.error) return NextResponse.json({ error: "Rate limit could not be checked." }, { status: 503 });
+  if (rateLimit.data !== true) return NextResponse.json({ error: "Too many sync requests; wait a minute and try again." }, { status: 429 });
   const { sourceId } = await context.params;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sourceId)) {
     return NextResponse.json({ error: "GitHub source ID is invalid." }, { status: 400 });
