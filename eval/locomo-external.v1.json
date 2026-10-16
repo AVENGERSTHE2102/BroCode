@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "dataClass": "external_benchmark_locomo_subset",
+  "sourceAttribution": "Verbatim dialogue turns and QA pairs adapted from the LoCoMo benchmark (snap-research/locomo, ACL 2024, 'Evaluating Very Long-Term Conversational Memory of LLM Agents'), https://github.com/snap-research/locomo/blob/main/data/locomo10.json, conversation 1 (speakers Caroline and Melanie), sessions 1 and 2. This is real external QA data, not synthetic — included to let the graph-vs-baseline comparison be checked against a citable public benchmark instead of only self-authored fixtures.",
+  "researchBasis": ["part2.md §4.8 (validation gap: no independent benchmark of our own)", "part1.md §3 P7 multi-hop retrieval"],
+  "cases": [
+    {
+      "id": "locomo-temporal-support-group-date",
+      "dimensions": ["multi_hop", "temporal_memory", "external_benchmark"],
+      "question": "Based on the conversation between Caroline and Melanie, on what date did Caroline go to the LGBTQ support group?",
+      "nodes": [
+        { "id": "locomo-session1-meta", "type": "SessionMeta", "text": "Session between Caroline and Melanie started at 1:56 pm on 8 May 2023." },
+        { "id": "locomo-d1-1", "type": "Message", "speaker": "Caroline", "text": "Hey Mel! Good to see you! How have you been?" },
+        { "id": "locomo-d1-2", "type": "Message", "speaker": "Melanie", "text": "Hey Caroline! Good to see you! I'm swamped with the kids & work. What's up with you? Anything new?" },
+        { "id": "locomo-d1-3", "type": "Message", "speaker": "Caroline", "text": "I went to a LGBTQ support group yesterday and it was so powerful." },
+        { "id": "locomo-d1-4", "type": "Message", "speaker": "Melanie", "text": "Wow, that's cool, Caroline! What happened that was so awesome? Did you hear any inspiring stories?" },
+        { "id": "locomo-d1-5", "type": "Message", "speaker": "Caroline", "text": "The transgender stories were so inspiring! I was so happy and thankful for all the support." }
+      ],
+      "edges": [
+        { "id": "locomo-e1-1", "from": "locomo-session1-meta", "type": "STARTS", "to": "locomo-d1-1" },
+        { "id": "locomo-e1-2", "from": "locomo-d1-1", "type": "NEXT", "to": "locomo-d1-2" },
+        { "id": "locomo-e1-3", "from": "locomo-d1-2", "type": "NEXT", "to": "locomo-d1-3" },
+        { "id": "locomo-e1-4", "from": "locomo-d1-3", "type": "NEXT", "to": "locomo-d1-4" },
+        { "id": "locomo-e1-5", "from": "locomo-d1-4", "type": "NEXT", "to": "locomo-d1-5" }
+      ],
+      "expected": {
+        "outcome": "answer",
+        "claims": ["Caroline went to the LGBTQ support group on 7 May 2023"],
+        "evidencePaths": [["locomo-session1-meta", "locomo-e1-1", "locomo-d1-1", "locomo-e1-2", "locomo-d1-2", "locomo-e1-3", "locomo-d1-3"]],
+        "requiredControls": ["cite_every_claim", "temporal_reasoning_from_relative_date"]
+      }
+    },
+    {
+      "id": "locomo-realization-attribution-correct",
+      "dimensions": ["attribution", "external_benchmark"],
+      "question": "What did Melanie realize after her charity race?",
+      "nodes": [
+        { "id": "locomo-d2-1", "type": "Message", "speaker": "Melanie", "text": "Hey Caroline, since we last chatted, I've had a lot of things happening to me." },
+        { "id": "locomo-d2-2", "type": "Message", "speaker": "Caroline", "text": "That charity race sounds great, Mel! Making a difference & raising awareness for mental health is super rewarding" },
+        { "id": "locomo-d2-3", "type": "Message", "speaker": "Melanie", "text": "Thanks, Caroline! The event was really thought-provoking. I'm starting to realize that self-care is really important." },
+        { "id": "locomo-d2-4", "type": "Message", "speaker": "Caroline", "text": "I totally agree, Melanie. Taking care of ourselves is so important - even if it's not always easy." },
+        { "id": "locomo-d2-5", "type": "Message", "speaker": "Melanie", "text": "Yeah, it's tough. So I'm carving out some me-time each day - running, reading, or playing my violin" }
+      ],
+      "edges": [
+        { "id": "locomo-e2-1", "from": "locomo-d2-1", "type": "NEXT", "to": "locomo-d2-2" },
+        { "id": "locomo-e2-2", "from": "locomo-d2-2", "type": "NEXT", "to": "locomo-d2-3" },
+        { "id": "locomo-e2-3", "from": "locomo-d2-3", "type": "NEXT", "to": "locomo-d2-4" },
+        { "id": "locomo-e2-4", "from": "locomo-d2-4", "type": "NEXT", "to": "locomo-d2-5" }
+      ],
+      "expected": {
+        "outcome": "answer",
+        "claims": ["Melanie realized that self-care is important after her charity race"],
+        "evidencePaths": [["locomo-d2-1", "locomo-e2-1", "locomo-d2-2", "locomo-e2-2", "locomo-d2-3"]],
+        "requiredControls": ["cite_every_claim", "attribute_realization_to_correct_speaker"]
+      }
+    },
+    {
+      "id": "locomo-realization-attribution-adversarial",
+      "dimensions": ["adversarial", "external_benchmark", "abstention"],
+      "question": "What did Caroline realize after her charity race?",
+      "nodes": [
+        { "id": "locomo-d2-1", "type": "Message", "speaker": "Melanie", "text": "Hey Caroline, since we last chatted, I've had a lot of things happening to me." },
+        { "id": "locomo-d2-2", "type": "Message", "speaker": "Caroline", "text": "That charity race sounds great, Mel! Making a difference & raising awareness for mental health is super rewarding" },
+        { "id": "locomo-d2-3", "type": "Message", "speaker": "Melanie", "text": "Thanks, Caroline! The event was really thought-provoking. I'm starting to realize that self-care is really important." },
+        { "id": "locomo-d2-4", "type": "Message", "speaker": "Caroline", "text": "I totally agree, Melanie. Taking care of ourselves is so important - even if it's not always easy." },
+        { "id": "locomo-d2-5", "type": "Message", "speaker": "Melanie", "text": "Yeah, it's tough. So I'm carving out some me-time each day - running, reading, or playing my violin" }
+      ],
+      "edges": [
+        { "id": "locomo-e2-1", "from": "locomo-d2-1", "type": "NEXT", "to": "locomo-d2-2" },
+        { "id": "locomo-e2-2", "from": "locomo-d2-2", "type": "NEXT", "to": "locomo-d2-3" },
+        { "id": "locomo-e2-3", "from": "locomo-d2-3", "type": "NEXT", "to": "locomo-d2-4" },
+        { "id": "locomo-e2-4", "from": "locomo-d2-4", "type": "NEXT", "to": "locomo-d2-5" }
+      ],
+      "expected": {
+        "outcome": "abstain",
+        "claims": [],
+        "evidencePaths": [],
+        "requiredControls": ["abstain_on_false_premise", "do_not_fabricate_attribution"]
+      }
+    }
+  ]
+}

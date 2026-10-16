@@ -8,6 +8,7 @@ import { workflowDomainLabel, type WorkflowDomain } from "../src/lib/workflow-do
 import { mcpTools } from "../src/lib/mcp-tools";
 
 type Fixture = { version: number; dataClass: string; cases: Array<EvalCase & { domain?: WorkflowDomain; question: string; expected: EvalCase["expected"] & { outcome: string } }> };
+type SourcedCase = Fixture["cases"][number] & { dataClass: string };
 type ModeResult = {
   mode: string;
   status: "completed" | "failed";
@@ -40,22 +41,23 @@ if (!config) {
     console.error(`AI_EVAL_CONTEXT_BUDGET_BYTES must be an integer between 8000 and ${MAX_INPUT_BUDGET}.`);
     process.exitCode = 2;
   } else {
-    const fixtures = await Promise.all(["engineering-incidents.v1.json", "domain-workflows.v1.json"].map(async (file) =>
+    const fixtureFiles = ["engineering-incidents.v1.json", "domain-workflows.v1.json", "locomo-external.v1.json"];
+    const fixtures = await Promise.all(fixtureFiles.map(async (file) =>
       JSON.parse(await readFile(new URL(`../eval/${file}`, import.meta.url), "utf8")) as Fixture));
-    const cases = fixtures.flatMap((fixture) => fixture.cases);
+    const cases: SourcedCase[] = fixtures.flatMap((fixture) => fixture.cases.map((item) => ({ ...item, dataClass: fixture.dataClass })));
     const maxCases = Number(process.env.AI_EVAL_MAX_CASES ?? cases.length);
     if (!Number.isInteger(maxCases) || maxCases < 1 || maxCases > cases.length) {
       console.error(`AI_EVAL_MAX_CASES must be between 1 and ${cases.length}.`);
       process.exitCode = 2;
     } else {
       const selectedCases = cases.slice(0, maxCases);
-      const results: Array<{ caseId: string; domain: string; mode: ModeResult }> = [];
+      const results: Array<{ caseId: string; domain: string; dataClass: string; mode: ModeResult }> = [];
       for (const testCase of selectedCases) {
         const domain = testCase.domain ?? "general";
         const records = visibleEvalRecords(testCase);
         for (const mode of MODES) {
           const outcome = await runCase(mode, testCase, records, domain, budgetValue, config);
-          results.push({ caseId: testCase.id, domain: workflowDomainLabel(domain), mode: outcome });
+          results.push({ caseId: testCase.id, domain: workflowDomainLabel(domain), dataClass: testCase.dataClass, mode: outcome });
         }
       }
       const summary = MODES.map((mode) => {
@@ -76,13 +78,13 @@ if (!config) {
         };
       });
       console.log(JSON.stringify({
-        dataClass: "synthetic_test_fixture_only",
+        dataClasses: Object.fromEntries(fixtureFiles.map((file, index) => [file, fixtures[index].dataClass])),
         model: config.model,
         inputBudget: { bytesPerCaseRun: budgetValue, outputTokensPerCaseRun: MAX_OUTPUT_TOKENS, definition: "Hard cap on cumulative serialized model request-body bytes for each mode/case; tool schemas and repeated graph-agent calls count toward the cap." },
-        cases: selectedCases.map((item) => item.id),
+        cases: selectedCases.map((item) => ({ id: item.id, dataClass: item.dataClass })),
         metrics: { expectedPathCoverage: "share of reference paths whose every node/edge was available in model context", claimTokenRecall: "mean per-reference-claim lexical token recall; not semantic grading", claimTokenF1: "lexical token F1 against reference claims; not semantic grading" },
         summary, results,
-        failures: results.filter((item) => item.mode.failureReasons.length > 0).map(({ caseId, domain, mode }) => ({ caseId, domain, mode: mode.mode, reasons: mode.failureReasons })),
+        failures: results.filter((item) => item.mode.failureReasons.length > 0).map(({ caseId, domain, dataClass, mode }) => ({ caseId, domain, dataClass, mode: mode.mode, reasons: mode.failureReasons })),
       }, null, 2));
     }
   }
