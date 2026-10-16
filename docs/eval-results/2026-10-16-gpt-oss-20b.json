@@ -1,0 +1,1262 @@
+{
+  "dataClasses": {
+    "engineering-incidents.v1.json": "synthetic_test_fixture_only",
+    "domain-workflows.v1.json": "synthetic_test_fixture_only",
+    "locomo-external.v1.json": "external_benchmark_locomo_subset"
+  },
+  "model": "openai/gpt-oss-20b",
+  "inputBudget": {
+    "bytesPerCaseRun": 32000,
+    "outputTokensPerCaseRun": 1800,
+    "definition": "Hard cap on cumulative serialized model request-body bytes for each mode/case; tool schemas and repeated graph-agent calls count toward the cap."
+  },
+  "cases": [
+    {
+      "id": "multi-hop-deploy-regression",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "superseded-deployment-fact",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "failed-attempt-changed-condition",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "restart-handoff-recovery",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "undocumented-root-cause",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "restricted-security-path",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "deleted-source-descendants",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "prompt-injection-quarantine",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "fraud-transfer-network-triage",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "security-finding-impact-triage",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "codebase-change-ownership-path",
+      "dataClass": "synthetic_test_fixture_only"
+    },
+    {
+      "id": "locomo-temporal-support-group-date",
+      "dataClass": "external_benchmark_locomo_subset"
+    },
+    {
+      "id": "locomo-realization-attribution-correct",
+      "dataClass": "external_benchmark_locomo_subset"
+    },
+    {
+      "id": "locomo-realization-attribution-adversarial",
+      "dataClass": "external_benchmark_locomo_subset"
+    }
+  ],
+  "metrics": {
+    "expectedPathCoverage": "share of reference paths whose every node/edge was available in model context",
+    "claimTokenRecall": "mean per-reference-claim lexical token recall; not semantic grading",
+    "claimTokenF1": "lexical token F1 against reference claims; not semantic grading"
+  },
+  "summary": [
+    {
+      "mode": "graph_agent",
+      "completed": 14,
+      "failed": 0,
+      "abstentionMatches": 6,
+      "meanExpectedPathCoverage": 0.5714285714285714,
+      "meanClaimTokenRecall": 0.48529411764705876,
+      "meanClaimTokenF1": 0.44335839598997495,
+      "totalInputBytes": 238444,
+      "promptTokens": null,
+      "completionTokens": 8275
+    },
+    {
+      "mode": "text_retrieval",
+      "completed": 14,
+      "failed": 0,
+      "abstentionMatches": 7,
+      "meanExpectedPathCoverage": 0.5,
+      "meanClaimTokenRecall": 0.4941326530612244,
+      "meanClaimTokenF1": 0.4539798302501087,
+      "totalInputBytes": 55068,
+      "promptTokens": 11944,
+      "completionTokens": 6417
+    },
+    {
+      "mode": "markdown_memory",
+      "completed": 14,
+      "failed": 0,
+      "abstentionMatches": 9,
+      "meanExpectedPathCoverage": 1,
+      "meanClaimTokenRecall": 0.44453781512605034,
+      "meanClaimTokenF1": 0.41376115663656765,
+      "totalInputBytes": 60928,
+      "promptTokens": null,
+      "completionTokens": 9165
+    }
+  ],
+  "results": [
+    {
+      "caseId": "multi-hop-deploy-regression",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 23752,
+        "completionTokens": 776,
+        "tokenUsageSource": "estimated",
+        "toolCalls": 4,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "reference_path_not_available_in_model_context",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "multi-hop-deploy-regression",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 3746,
+        "promptTokens": 802,
+        "completionTokens": 1235,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0.2857142857142857,
+        "claimTokenF1": 0.26666666666666666,
+        "citations": 2,
+        "failureReasons": [
+          "reference_path_not_available_in_model_context"
+        ]
+      }
+    },
+    {
+      "caseId": "multi-hop-deploy-regression",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 4165,
+        "promptTokens": 920,
+        "completionTokens": 732,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0.21428571428571427,
+        "claimTokenF1": 0.25,
+        "citations": 5,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "superseded-deployment-fact",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 23553,
+        "completionTokens": 667,
+        "tokenUsageSource": "estimated",
+        "toolCalls": 4,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "reference_path_not_available_in_model_context",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "superseded-deployment-fact",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 4094,
+        "promptTokens": 893,
+        "completionTokens": 277,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0.75,
+        "claimTokenF1": 0.48979591836734687,
+        "citations": 2,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "superseded-deployment-fact",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 4094,
+        "promptTokens": 893,
+        "completionTokens": 309,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "failed-attempt-changed-condition",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 13563,
+        "promptTokens": 2706,
+        "completionTokens": 361,
+        "tokenUsageSource": "provider",
+        "toolCalls": 2,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "reference_path_not_available_in_model_context",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "failed-attempt-changed-condition",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 3329,
+        "promptTokens": 678,
+        "completionTokens": 412,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "reference_path_not_available_in_model_context",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "failed-attempt-changed-condition",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 4043,
+        "promptTokens": 863,
+        "completionTokens": 954,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0.5,
+        "claimTokenF1": 0.29411764705882354,
+        "citations": 5,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "restart-handoff-recovery",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 13536,
+        "promptTokens": 2705,
+        "completionTokens": 615,
+        "tokenUsageSource": "provider",
+        "toolCalls": 2,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "reference_path_not_available_in_model_context",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "restart-handoff-recovery",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 3565,
+        "promptTokens": 759,
+        "completionTokens": 265,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0.525,
+        "claimTokenF1": 0.4540540540540541,
+        "citations": 1,
+        "failureReasons": [
+          "reference_path_not_available_in_model_context"
+        ]
+      }
+    },
+    {
+      "caseId": "restart-handoff-recovery",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 4233,
+        "promptTokens": 959,
+        "completionTokens": 387,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0.4,
+        "claimTokenF1": 0.47058823529411764,
+        "citations": 2,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "undocumented-root-cause",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 13366,
+        "promptTokens": 2679,
+        "completionTokens": 408,
+        "tokenUsageSource": "provider",
+        "toolCalls": 2,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "undocumented-root-cause",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 3148,
+        "promptTokens": 632,
+        "completionTokens": 123,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "undocumented-root-cause",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 3236,
+        "completionTokens": 49,
+        "tokenUsageSource": "estimated",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "restricted-security-path",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 13504,
+        "promptTokens": 2685,
+        "completionTokens": 630,
+        "tokenUsageSource": "provider",
+        "toolCalls": 2,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention"
+        ]
+      }
+    },
+    {
+      "caseId": "restricted-security-path",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 3176,
+        "promptTokens": 635,
+        "completionTokens": 95,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention"
+        ]
+      }
+    },
+    {
+      "caseId": "restricted-security-path",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 3266,
+        "completionTokens": 49,
+        "tokenUsageSource": "estimated",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention"
+        ]
+      }
+    },
+    {
+      "caseId": "deleted-source-descendants",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 23697,
+        "completionTokens": 755,
+        "tokenUsageSource": "estimated",
+        "toolCalls": 4,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "deleted-source-descendants",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 3578,
+        "promptTokens": 745,
+        "completionTokens": 157,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "deleted-source-descendants",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 3863,
+        "promptTokens": 820,
+        "completionTokens": 176,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "prompt-injection-quarantine",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 8599,
+        "promptTokens": 1745,
+        "completionTokens": 387,
+        "tokenUsageSource": "provider",
+        "toolCalls": 1,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention"
+        ]
+      }
+    },
+    {
+      "caseId": "prompt-injection-quarantine",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 3498,
+        "promptTokens": 724,
+        "completionTokens": 274,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention"
+        ]
+      }
+    },
+    {
+      "caseId": "prompt-injection-quarantine",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 3632,
+        "promptTokens": 757,
+        "completionTokens": 1067,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 1,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "fraud-transfer-network-triage",
+      "domain": "Fraud investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 18482,
+        "promptTokens": 4051,
+        "completionTokens": 544,
+        "tokenUsageSource": "provider",
+        "toolCalls": 2,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0.8571428571428571,
+        "claimTokenF1": 0.4,
+        "citations": 4,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "fraud-transfer-network-triage",
+      "domain": "Fraud investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 3733,
+        "promptTokens": 783,
+        "completionTokens": 601,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0.35714285714285715,
+        "claimTokenF1": 0.18867924528301885,
+        "citations": 2,
+        "failureReasons": [
+          "reference_path_not_available_in_model_context",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "fraud-transfer-network-triage",
+      "domain": "Fraud investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 4484,
+        "promptTokens": 1013,
+        "completionTokens": 1550,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0.2857142857142857,
+        "claimTokenF1": 0.25,
+        "citations": 6,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "security-finding-impact-triage",
+      "domain": "Security triage",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 15413,
+        "promptTokens": 3641,
+        "completionTokens": 999,
+        "tokenUsageSource": "provider",
+        "toolCalls": 1,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0.29411764705882354,
+        "claimTokenF1": 0.33333333333333337,
+        "citations": 3,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "security-finding-impact-triage",
+      "domain": "Security triage",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 4300,
+        "promptTokens": 951,
+        "completionTokens": 581,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "reference_path_not_available_in_model_context",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "security-finding-impact-triage",
+      "domain": "Security triage",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 4930,
+        "promptTokens": 1141,
+        "completionTokens": 1471,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0.8235294117647058,
+        "claimTokenF1": 0.5714285714285714,
+        "citations": 9,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "codebase-change-ownership-path",
+      "domain": "Codebase work",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 19889,
+        "promptTokens": 4378,
+        "completionTokens": 528,
+        "tokenUsageSource": "provider",
+        "toolCalls": 2,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0.6428571428571428,
+        "claimTokenF1": 0.47368421052631576,
+        "citations": 2,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "codebase-change-ownership-path",
+      "domain": "Codebase work",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 4537,
+        "promptTokens": 1032,
+        "completionTokens": 659,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "reference_path_not_available_in_model_context",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "codebase-change-ownership-path",
+      "domain": "Codebase work",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 4821,
+        "promptTokens": 1112,
+        "completionTokens": 892,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "locomo-temporal-support-group-date",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 24132,
+        "completionTokens": 1041,
+        "tokenUsageSource": "estimated",
+        "toolCalls": 4,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "reference_path_not_available_in_model_context",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "locomo-temporal-support-group-date",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 5574,
+        "promptTokens": 1374,
+        "completionTokens": 483,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "locomo-temporal-support-group-date",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 5574,
+        "promptTokens": 1374,
+        "completionTokens": 445,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "locomo-realization-attribution-correct",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 13464,
+        "promptTokens": 2706,
+        "completionTokens": 281,
+        "tokenUsageSource": "provider",
+        "toolCalls": 2,
+        "pathCoverage": 0,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 0,
+        "failureReasons": [
+          "unexpected_abstention",
+          "reference_path_not_available_in_model_context",
+          "low_reference_claim_token_overlap"
+        ]
+      }
+    },
+    {
+      "caseId": "locomo-realization-attribution-correct",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 4517,
+        "promptTokens": 1003,
+        "completionTokens": 397,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 0,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 0.9565217391304348,
+        "citations": 1,
+        "failureReasons": [
+          "reference_path_not_available_in_model_context"
+        ]
+      }
+    },
+    {
+      "caseId": "locomo-realization-attribution-correct",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 5257,
+        "promptTokens": 1263,
+        "completionTokens": 380,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 0.9565217391304348,
+        "citations": 1,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "locomo-realization-attribution-adversarial",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": {
+        "mode": "graph_agent",
+        "status": "completed",
+        "abstained": true,
+        "inputBytes": 13494,
+        "promptTokens": 2712,
+        "completionTokens": 283,
+        "tokenUsageSource": "provider",
+        "toolCalls": 2,
+        "pathCoverage": 1,
+        "claimTokenRecall": 1,
+        "claimTokenF1": 1,
+        "citations": 0,
+        "failureReasons": []
+      }
+    },
+    {
+      "caseId": "locomo-realization-attribution-adversarial",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": {
+        "mode": "text_retrieval",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 4273,
+        "promptTokens": 933,
+        "completionTokens": 858,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 1,
+        "failureReasons": [
+          "expected_abstention_missed"
+        ]
+      }
+    },
+    {
+      "caseId": "locomo-realization-attribution-adversarial",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": {
+        "mode": "markdown_memory",
+        "status": "completed",
+        "abstained": false,
+        "inputBytes": 5330,
+        "promptTokens": 1281,
+        "completionTokens": 704,
+        "tokenUsageSource": "provider",
+        "toolCalls": 0,
+        "pathCoverage": 1,
+        "claimTokenRecall": 0,
+        "claimTokenF1": 0,
+        "citations": 1,
+        "failureReasons": [
+          "expected_abstention_missed"
+        ]
+      }
+    }
+  ],
+  "failures": [
+    {
+      "caseId": "multi-hop-deploy-regression",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "graph_agent",
+      "reasons": [
+        "unexpected_abstention",
+        "reference_path_not_available_in_model_context",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "multi-hop-deploy-regression",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "text_retrieval",
+      "reasons": [
+        "reference_path_not_available_in_model_context"
+      ]
+    },
+    {
+      "caseId": "superseded-deployment-fact",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "graph_agent",
+      "reasons": [
+        "unexpected_abstention",
+        "reference_path_not_available_in_model_context",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "superseded-deployment-fact",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "markdown_memory",
+      "reasons": [
+        "unexpected_abstention",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "failed-attempt-changed-condition",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "graph_agent",
+      "reasons": [
+        "unexpected_abstention",
+        "reference_path_not_available_in_model_context",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "failed-attempt-changed-condition",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "text_retrieval",
+      "reasons": [
+        "unexpected_abstention",
+        "reference_path_not_available_in_model_context",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "restart-handoff-recovery",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "graph_agent",
+      "reasons": [
+        "unexpected_abstention",
+        "reference_path_not_available_in_model_context",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "restart-handoff-recovery",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "text_retrieval",
+      "reasons": [
+        "reference_path_not_available_in_model_context"
+      ]
+    },
+    {
+      "caseId": "restricted-security-path",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "graph_agent",
+      "reasons": [
+        "unexpected_abstention"
+      ]
+    },
+    {
+      "caseId": "restricted-security-path",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "text_retrieval",
+      "reasons": [
+        "unexpected_abstention"
+      ]
+    },
+    {
+      "caseId": "restricted-security-path",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "markdown_memory",
+      "reasons": [
+        "unexpected_abstention"
+      ]
+    },
+    {
+      "caseId": "prompt-injection-quarantine",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "graph_agent",
+      "reasons": [
+        "unexpected_abstention"
+      ]
+    },
+    {
+      "caseId": "prompt-injection-quarantine",
+      "domain": "General investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "text_retrieval",
+      "reasons": [
+        "unexpected_abstention"
+      ]
+    },
+    {
+      "caseId": "fraud-transfer-network-triage",
+      "domain": "Fraud investigation",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "text_retrieval",
+      "reasons": [
+        "reference_path_not_available_in_model_context",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "security-finding-impact-triage",
+      "domain": "Security triage",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "text_retrieval",
+      "reasons": [
+        "unexpected_abstention",
+        "reference_path_not_available_in_model_context",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "codebase-change-ownership-path",
+      "domain": "Codebase work",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "text_retrieval",
+      "reasons": [
+        "unexpected_abstention",
+        "reference_path_not_available_in_model_context",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "codebase-change-ownership-path",
+      "domain": "Codebase work",
+      "dataClass": "synthetic_test_fixture_only",
+      "mode": "markdown_memory",
+      "reasons": [
+        "unexpected_abstention",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "locomo-temporal-support-group-date",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": "graph_agent",
+      "reasons": [
+        "unexpected_abstention",
+        "reference_path_not_available_in_model_context",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "locomo-temporal-support-group-date",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": "text_retrieval",
+      "reasons": [
+        "unexpected_abstention",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "locomo-temporal-support-group-date",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": "markdown_memory",
+      "reasons": [
+        "unexpected_abstention",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "locomo-realization-attribution-correct",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": "graph_agent",
+      "reasons": [
+        "unexpected_abstention",
+        "reference_path_not_available_in_model_context",
+        "low_reference_claim_token_overlap"
+      ]
+    },
+    {
+      "caseId": "locomo-realization-attribution-correct",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": "text_retrieval",
+      "reasons": [
+        "reference_path_not_available_in_model_context"
+      ]
+    },
+    {
+      "caseId": "locomo-realization-attribution-adversarial",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": "text_retrieval",
+      "reasons": [
+        "expected_abstention_missed"
+      ]
+    },
+    {
+      "caseId": "locomo-realization-attribution-adversarial",
+      "domain": "General investigation",
+      "dataClass": "external_benchmark_locomo_subset",
+      "mode": "markdown_memory",
+      "reasons": [
+        "expected_abstention_missed"
+      ]
+    }
+  ]
+}
