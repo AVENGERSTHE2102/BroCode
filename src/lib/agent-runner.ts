@@ -273,6 +273,7 @@ const RATE_LIMIT_MAX_ATTEMPTS = 4;
 
 export async function completeWithModel(messages: AgentMessage[], tools: ToolDefinition[], config: ModelConfig, signal?: AbortSignal, maxTokens = 1800): Promise<Completion> {
   if (!Number.isInteger(maxTokens) || maxTokens < 1 || maxTokens > 1800) throw new Error("Model output token limit is invalid.");
+  const MAX_RETRY_WAIT_MS = 20_000;
   for (let attempt = 1; ; attempt++) {
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
       method: "POST",
@@ -281,9 +282,9 @@ export async function completeWithModel(messages: AgentMessage[], tools: ToolDef
       headers: { authorization: `Bearer ${config.apiKey}`, "content-type": "application/json" },
       body: JSON.stringify({ model: config.model, messages, tools, tool_choice: tools.length ? "auto" : "none", parallel_tool_calls: false, temperature: 0, max_tokens: maxTokens }),
     });
-    if (response.status === 429 && attempt < RATE_LIMIT_MAX_ATTEMPTS) {
+    if (response.status === 429 && attempt < RATE_LIMIT_MAX_ATTEMPTS && response.headers.get("x-should-retry") !== "false") {
       const retryAfterSeconds = Number(response.headers.get("retry-after"));
-      const waitMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds * 1000 : 1000 * 2 ** attempt;
+      const waitMs = Math.min(MAX_RETRY_WAIT_MS, Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds * 1000 : 1000 * 2 ** attempt);
       await response.body?.cancel();
       await new Promise((resolve) => setTimeout(resolve, waitMs));
       continue;
