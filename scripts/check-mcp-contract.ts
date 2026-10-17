@@ -9,9 +9,9 @@ import { MCP_MODERN_VERSION, mcpModernResult, validateMcpProtocolRequest } from 
 
 const mcpRoute = await readFile(new URL("../src/app/api/mcp/route.ts", import.meta.url), "utf8");
 
-assert.deepEqual(mcpTools.map((tool) => tool.name), ["resolve_entity", "trace_entity", "recall_facts", "recall_attempts", "remember_fact", "create_task", "list_tasks", "claim_task", "handoff_task", "acknowledge_task_handoff", "complete_task", "propose_action", "explain_evidence"]);
+assert.deepEqual(mcpTools.map((tool) => tool.name), ["resolve_entity", "trace_entity", "recall_facts", "recall_attempts", "remember_fact", "create_task", "list_tasks", "claim_task", "handoff_task", "acknowledge_task_handoff", "complete_task", "propose_action", "explain_evidence", "search_entities", "graph_overview", "find_experts", "impact_analysis", "shortest_path"]);
 assert(mcpTools.every((tool) => tool.inputSchema.additionalProperties === false));
-assert(mcpTools.filter((tool) => ["resolve_entity", "trace_entity", "recall_facts", "recall_attempts", "list_tasks", "explain_evidence"].includes(tool.name)).every((tool) => tool.annotations.readOnlyHint));
+assert(mcpTools.filter((tool) => ["resolve_entity", "trace_entity", "recall_facts", "recall_attempts", "list_tasks", "explain_evidence", "search_entities", "graph_overview", "find_experts", "impact_analysis", "shortest_path"].includes(tool.name)).every((tool) => tool.annotations.readOnlyHint));
 assert(mcpTools.filter((tool) => ["remember_fact", "create_task", "handoff_task", "propose_action"].includes(tool.name)).every((tool) => tool.annotations.readOnlyHint === false && tool.annotations.idempotentHint && tool.annotations.destructiveHint === false));
 assert(mcpTools.filter((tool) => ["claim_task", "acknowledge_task_handoff", "complete_task"].includes(tool.name)).every((tool) => tool.annotations.readOnlyHint === false && tool.annotations.idempotentHint && tool.annotations.destructiveHint === false));
 assert(mcpTools.find((tool) => tool.name === "propose_action")?.description.includes("does not approve or execute"));

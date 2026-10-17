@@ -3,6 +3,7 @@ import { POST as runInvestigation } from "@/app/api/investigations/[id]/run/rout
 import { readJsonBody } from "@/lib/read-json-body";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
   const runRequest = new Request(request.url, {
     method: "POST", headers, signal: request.signal,
     body: JSON.stringify({ question: body.question, idempotencyKey: body.idempotencyKey, ...(typeof runId === "string" ? { runId } : {}),
+      ...("scope" in body && typeof body.scope === "string" ? { scope: body.scope } : {}), ...("scopeLabel" in body && typeof body.scopeLabel === "string" ? { scopeLabel: body.scopeLabel } : {}),
       requestedWrites: { proposals: false, factCandidates: false, taskUpdates: false } }),
   });
   return runInvestigation(runRequest, { params: Promise.resolve({ id: body.investigationId }) });

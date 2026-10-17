@@ -28,7 +28,7 @@ export function buildMcpTracePayload(args: Record<string, unknown>, value: unkno
   let input: unknown = args;
   let output: unknown = value;
   const resultValue = isRecord(value) && value.ok === true && isRecord(value.value) ? value.value : value;
-  let graphPaths = toolName === "trace_entity" && isRecord(resultValue) && Array.isArray(resultValue.data) ? resultValue.data : [];
+  let graphPaths = ["trace_entity", "find_experts", "impact_analysis", "shortest_path"].includes(toolName) && isRecord(resultValue) && Array.isArray(resultValue.data) ? resultValue.data : [];
   let truncated = false;
   if (toolName === "remember_fact") {
     input = {

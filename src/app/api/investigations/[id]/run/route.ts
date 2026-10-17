@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { AGENT_PROMPT_REVISION, completeWithModel, openAiToolDefinitions, readModelConfig, runToolSelectionLoop, selectAgentToolNames, type AgentWritePermissions } from "@/lib/agent-runner";
 import { finishAgentRun, startAgentRun, traceAgentToolCall } from "@/lib/agent-tools";
 import { invokeMcpTool, mcpToolKinds } from "@/lib/mcp-dispatch";
+import { parseScope } from "@/lib/graph-scope";
 import { buildMcpTracePayload } from "@/lib/mcp-trace";
 import { readJsonBody } from "@/lib/read-json-body";
 import { workspaceSupabase } from "@/lib/workspace-supabase";
@@ -10,6 +11,7 @@ import { isWorkflowDomain } from "@/lib/workflow-domains";
 import { requireSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 type Context = { params: Promise<{ id: string }> };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -47,6 +49,10 @@ export async function POST(request: Request, { params }: Context) {
     return NextResponse.json({ error: "Requested write permissions are invalid." }, { status: 400 });
   }
   const writePermissions = (requestedWrites ?? {}) as AgentWritePermissions;
+  // Selected repository scope: enforced inside every graph tool below, never chosen by the model.
+  const scope = parseScope((body as Record<string, unknown>).scope);
+  const rawScopeLabel = (body as Record<string, unknown>).scopeLabel;
+  const scopeLabel = typeof rawScopeLabel === "string" ? rawScopeLabel.replace(/[^\w .:/@#-]/g, "").slice(0, 120) : "";
 
   const { id } = await params;
   if (!UUID.test(id)) return NextResponse.json({ error: "Investigation ID is invalid." }, { status: 400 });
@@ -92,7 +98,7 @@ export async function POST(request: Request, { params }: Context) {
       },
       invoke: async (name, args) => {
         await assertInvestigationLive();
-        const result = await invokeMcpTool(request, name, args);
+        const result = await invokeMcpTool(request, name, { ...args, scope });
         await assertInvestigationLive();
         return result;
       },
@@ -110,7 +116,7 @@ export async function POST(request: Request, { params }: Context) {
         if (!recorded.ok) throw new Error("Tool execution trace could not be stored.");
         await assertInvestigationLive();
       },
-    }, { operationKey: `${access.workspace.id}:${id}:${body.idempotencyKey}`, workflowDomain });
+    }, { operationKey: `${access.workspace.id}:${id}:${body.idempotencyKey}`, scopeLabel: scope === "all" ? undefined : scopeLabel || (scope === "sample" ? "the sample incident graph" : "one selected repository"), workflowDomain });
     await assertInvestigationLive();
     const outputTruncated = result.answer.length > 2000;
     const finished = await finishAgentRun(request, {

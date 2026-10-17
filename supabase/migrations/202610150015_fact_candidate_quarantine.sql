@@ -58,18 +58,20 @@ begin
   if p_fact_key is null or char_length(btrim(p_fact_key)) not between 1 and 200
     or p_value is null or octet_length(p_value::text) > 16000
     or p_provenance is null or jsonb_typeof(p_provenance) <> 'array'
-    or case when jsonb_typeof(p_provenance) = 'array' then not (jsonb_array_length(p_provenance) between 1 and 20) else true end
-    or case when jsonb_typeof(p_provenance) = 'array' then exists (
-      select 1 from jsonb_array_elements(p_provenance) e(value)
-      where jsonb_typeof(e.value) <> 'object'
-        or jsonb_typeof(e.value -> 'sourceId') is distinct from 'string'
-        or char_length(btrim(e.value ->> 'sourceId')) not between 1 and 300
-        or jsonb_typeof(e.value -> 'version') is distinct from 'string'
-        or char_length(btrim(e.value ->> 'version')) not between 1 and 200
-    ) else true end
+    or not (jsonb_array_length(p_provenance) between 1 and 20)
     or octet_length(p_provenance::text) > 8000
     or p_expected_version is null or p_expected_version < 0
     or p_idempotency_key is null or char_length(btrim(p_idempotency_key)) not between 1 and 160 then
+    raise exception 'fact candidate input is invalid' using errcode = '22023';
+  end if;
+  if exists (
+    select 1 from jsonb_array_elements(p_provenance) e(value)
+    where jsonb_typeof(e.value) <> 'object'
+      or jsonb_typeof(e.value -> 'sourceId') is distinct from 'string'
+      or char_length(btrim(e.value ->> 'sourceId')) not between 1 and 300
+      or jsonb_typeof(e.value -> 'version') is distinct from 'string'
+      or char_length(btrim(e.value ->> 'version')) not between 1 and 200
+  ) then
     raise exception 'fact candidate input is invalid' using errcode = '22023';
   end if;
 

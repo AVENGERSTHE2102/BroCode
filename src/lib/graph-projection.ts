@@ -28,7 +28,11 @@ async function parentAvailable(query: GraphQuery, label: "Investigation" | "Task
 }
 
 async function project(query: GraphQuery, event: GraphProjectionEvent) {
-  const payload = event.payload;
+  // Outbox rows carry the whole table row; a GitHub record's fields (title, author, URL, repository, details) live in its
+  // nested "payload" column. Flatten it so they are not silently projected as empty strings.
+  const nested = event.entity_type === "workspace_github_records" && typeof event.payload.payload === "object"
+    && event.payload.payload !== null && !Array.isArray(event.payload.payload) ? event.payload.payload as Record<string, unknown> : null;
+  const payload = nested ? { ...nested, ...event.payload } : event.payload;
   const params = {
     entity_type: event.entity_type,
     entity_id: event.entity_id,
@@ -215,6 +219,7 @@ async function project(query: GraphQuery, event: GraphProjectionEvent) {
       MERGE (r)-[e:${relation} {id: $source_id}]->(n)
       SET e.workspace_id = $workspace_id, e.acl_role = 'workspace', e.source_version = $source_version
       RETURN n.source_id`, 5000, shared);
+    await linkPeopleAndReferences(query, label, recordType, shared, text(payload.repository_id));
     if (recordType === "pull_request") {
       const details = typeof payload.details === "object" && payload.details !== null && !Array.isArray(payload.details)
         ? payload.details as Record<string, unknown> : {};
@@ -439,4 +444,78 @@ async function project(query: GraphQuery, event: GraphProjectionEvent) {
 export function projectGraphEvent(event: GraphProjectionEvent) {
   const graphName = `wp_${event.workspace_id.replaceAll("-", "")}`;
   return withWorkspaceGraph(graphName, (query) => project(query, event));
+}
+
+// Connect a GitHub record to the people and items it relates to, so questions need real multi-hop traversal:
+// (Person)-[:AUTHORED]->(record) and (record)-[:REFERENCES]->(Issue|PullRequest) for "#123" mentions.
+async function linkPeopleAndReferences(query: GraphQuery, label: string, recordType: string, shared: GraphParams, repositoryId: string) {
+  const author = String(shared.author ?? "").trim();
+  const url = String(shared.source_url ?? "");
+  const number = recordType === "issue" || recordType === "pull_request" ? Number(/\/(?:issues|pull)\/(\d{1,9})(?:$|[/?#])/.exec(url)?.[1] ?? 0) : 0;
+  const refs = [...new Set([...`${shared.title ?? ""}
+${shared.body ?? ""}`.matchAll(/(?:^|[^\w&])#(\d{1,9})/g)].map((match) => Number(match[1])))]
+    .filter((value) => value > 0 && value !== number).slice(0, 20);
+  await query(`MATCH (n:${label} {source_id: $source_id}) SET n.repository_id = $repository_id, n.number = $number, n.refs = ${refs.length ? `[${refs.join(",")}]` : "[]"} RETURN n.source_id`,
+    3000, { source_id: String(shared.source_id), repository_id: repositoryId, number });
+  if (author) {
+    const personId = `github:person:${author.toLowerCase()}`;
+    await query(`MATCH (n:${label} {source_id: $source_id})
+      MERGE (p:Person {source_id: $person_id})
+      ON CREATE SET p.id = $person_id, p.title = $author, p.name = $author, p.workspace_id = $workspace_id, p.acl_role = 'workspace',
+                    p.source_type = 'github', p.source_version = 'github-identity'
+      MERGE (p)-[e:AUTHORED {id: $edge_id}]->(n)
+      SET e.workspace_id = $workspace_id, e.acl_role = 'workspace', e.source_version = $source_version
+      RETURN p.source_id`, 3000, { ...shared, person_id: personId, author: author.slice(0, 200), edge_id: `${shared.source_id}:authored` });
+  }
+  // Forward: this record mentions #N. Backward: earlier records that mentioned this record's number.
+  for (const ref of refs) {
+    await query(`MATCH (n:${label} {source_id: $source_id}) MATCH (t) WHERE (t:Issue OR t:PullRequest) AND t.repository_id = $repository_id AND t.number = $ref
+      MERGE (n)-[e:REFERENCES {id: $edge_id}]->(t) SET e.workspace_id = $workspace_id, e.acl_role = 'workspace', e.source_version = $source_version RETURN e.id`,
+      3000, { ...shared, repository_id: repositoryId, ref, edge_id: `${shared.source_id}:ref:${ref}` });
+  }
+  if (number) {
+    await query(`MATCH (t:${label} {source_id: $source_id}) MATCH (o) WHERE o.repository_id = $repository_id AND $number IN o.refs AND o.source_id <> $source_id
+      MERGE (o)-[e:REFERENCES {id: o.source_id + ':ref:' + toString($number)}]->(t) SET e.workspace_id = $workspace_id, e.acl_role = 'workspace', e.source_version = o.source_version RETURN count(e)`,
+      3000, { ...shared, repository_id: repositoryId, number });
+  }
+}
+
+/** Re-derive people and #references for GitHub records already in a workspace graph (e.g. projected before these links existed). */
+export async function backfillGithubLinks(graphName: string, workspaceId: string) {
+  return withWorkspaceGraph(graphName, async (query) => {
+    const rows = await query(`MATCH (n) WHERE (n:Issue OR n:PullRequest OR n:Commit) AND n.source_type = 'github'
+      RETURN labels(n)[0], n.source_id, n.source_version, n.source_url, n.title, n.body, n.author LIMIT 2000`, 8000);
+    const types: Record<string, string> = { Issue: "issue", PullRequest: "pull_request", Commit: "commit" };
+    let linked = 0;
+    for (const row of rows) {
+      const [label, sourceId, version, url, title, body, author] = row.map((value) => (typeof value === "string" ? value : ""));
+      const repositoryId = /^github:[a-z_]+:(\d+):/.exec(sourceId)?.[1] ?? "";
+      if (!types[label] || !sourceId || !repositoryId) continue;
+      await linkPeopleAndReferences(query, label, types[label], {
+        workspace_id: workspaceId, source_id: sourceId, source_version: version, source_url: url, title, body: body.slice(0, 20_000), author,
+      }, repositoryId);
+      linked++;
+    }
+    return { linked };
+  });
+}
+
+/** Re-project stored GitHub record rows into a workspace graph (repairs records projected before payload flattening). */
+export async function reprojectGithubRecords(workspaceId: string, rows: Array<Record<string, unknown>>) {
+  const graphName = `wp_${workspaceId.replaceAll("-", "")}`;
+  return withWorkspaceGraph(graphName, async (query) => {
+    await query("MATCH (r:Repository {source_id: 'github:repo:'}) DETACH DELETE r", 3000);
+    let projected = 0;
+    // Repositories first so every record attaches to a named repository node.
+    const ordered = [...rows].sort((a, b) => Number(b.record_type === "repository") - Number(a.record_type === "repository"));
+    for (const row of ordered) {
+      if (typeof row.id !== "string" || typeof row.record_type !== "string") continue;
+      try {
+        await project(query, { id: 0, workspace_id: workspaceId, entity_type: "workspace_github_records", entity_id: row.id,
+          entity_version: Number(row.version) || 1, operation: "upsert", attempts: 0, payload: row } as unknown as GraphProjectionEvent);
+        projected++;
+      } catch { /* skip a malformed record; the rest still project */ }
+    }
+    return { reprojected: projected };
+  });
 }

@@ -29,7 +29,7 @@ try {
   assert.deepEqual(tools.map(({ name }) => name), [
     "resolve_entity", "trace_entity", "recall_facts", "recall_attempts", "remember_fact",
     "create_task", "list_tasks", "claim_task", "handoff_task", "acknowledge_task_handoff",
-    "complete_task", "propose_action", "explain_evidence",
+    "complete_task", "propose_action", "explain_evidence", "search_entities", "graph_overview", "find_experts", "impact_analysis", "shortest_path",
   ]);
   assert.deepEqual(prompts.map(({ name }) => name), [
     "investigate_fraud", "triage_security_finding", "investigate_codebase_change",

@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./chat.css";
+import "./cockpit.css";
+import "./landing.css";
 
 export const metadata: Metadata = {
   title: "Waypoint — engineering incident agent",

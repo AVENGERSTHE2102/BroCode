@@ -74,7 +74,7 @@ begin
     or p_outcome is null or p_outcome not in ('failed', 'completed')
     or p_summary is null or char_length(btrim(p_summary)) not between 1 and 4000
     or p_changed_conditions is null or jsonb_typeof(p_changed_conditions) <> 'array'
-    or case when jsonb_typeof(p_changed_conditions) = 'array' then jsonb_array_length(p_changed_conditions) > 20 else true end
+    or jsonb_array_length(p_changed_conditions) > 20
     or octet_length(p_changed_conditions::text) > 8000
     or p_idempotency_key is null or char_length(p_idempotency_key) not between 1 and 160
     or (p_retry_explanation is not null and char_length(btrim(p_retry_explanation)) not between 1 and 2000) then

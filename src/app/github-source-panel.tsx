@@ -5,7 +5,15 @@ import { useEffect, useState, type FormEvent } from "react";
 type Repository = { id: number; fullName: string; private: boolean };
 type SyncState = { started_at: string; completed_at: string | null; status: "running" | "succeeded" | "partial" | "failed"; partial_errors: string[]; error_code: string | null };
 type Source = { id: string; repository_id: number; full_name: string; html_url: string; default_branch: string; provider_updated_at: string | null; last_sync: SyncState | null };
+type SetupCheck = {
+  present: Record<string, boolean>; reachable: boolean; callbackUrl: string; boundInstallations: number;
+  app: { slug: string; matchesSlug: boolean; missingPermissions: string[]; installations: number } | null;
+};
 type Installation = { installation_id: number; github_login: string; created_at: string };
+
+function Check({ ok, label }: { ok: boolean; label: string }) {
+  return <li className={ok ? "check-ok" : "check-bad"}><span aria-hidden="true">{ok ? "✓" : "✗"}</span>{label}</li>;
+}
 
 export function GitHubSourcePanel({ canManage }: { canManage: boolean }) {
   const [sources, setSources] = useState<Source[]>([]);
@@ -19,6 +27,8 @@ export function GitHubSourcePanel({ canManage }: { canManage: boolean }) {
   const [syncingSource, setSyncingSource] = useState("");
   const [syncResult, setSyncResult] = useState("");
   const [loading, setLoading] = useState(true);
+  const [setup, setSetup] = useState<SetupCheck | null>(null);
+  const operatorReady = Boolean(setup && Object.values(setup.present).every(Boolean) && setup.reachable && setup.app?.matchesSlug && setup.app.missingPermissions.length === 0);
 
   async function refresh() {
     const [sourceResponse, installResponse] = await Promise.all([
@@ -33,11 +43,11 @@ export function GitHubSourcePanel({ canManage }: { canManage: boolean }) {
     setInstallationId((current) => current || String(installBody.installations[0]?.installation_id ?? ""));
   }
 
-  async function startInstallation() {
+  async function startInstallation(mode: "install" | "link" = "install") {
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/api/sources/github/install-url", { method: "POST" });
+      const response = await fetch("/api/sources/github/install-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "GitHub App installation could not be started.");
       window.location.assign(body.installUrl);
@@ -48,6 +58,7 @@ export function GitHubSourcePanel({ canManage }: { canManage: boolean }) {
   }
 
   useEffect(() => {
+    if (canManage) fetch("/api/sources/github/setup", { cache: "no-store" }).then((response) => (response.ok ? response.json() : null)).then((body: SetupCheck | null) => setSetup(body)).catch(() => undefined);
     refresh().catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "GitHub sources could not be loaded."))
       .finally(() => setLoading(false));
   }, []);
@@ -131,7 +142,25 @@ export function GitHubSourcePanel({ canManage }: { canManage: boolean }) {
       </div></li>)}
     </ul> : <p>No GitHub repositories connected.</p>}
     {canManage && <>
-      <button className="quiet-button" type="button" onClick={startInstallation} disabled={busy}>{busy ? "Opening GitHub…" : "Authorize a GitHub App installation"}</button>
+      <div className="review-actions">
+        <button className="quiet-button" type="button" onClick={() => startInstallation("link")} disabled={busy}>{busy ? "Opening GitHub…" : installations.length ? "Reconnect GitHub" : "Connect GitHub"}</button>
+        {installations.length > 0 && <button className="quiet-button" type="button" onClick={() => startInstallation("install")} disabled={busy}>Add more repositories</button>}
+      </div>
+      <p className="fine-print">You’ll sign in with GitHub and choose what Waypoint can read. Access is read-only and limited to the repositories you pick.</p>
+      {setup && !operatorReady && <details className="setup-check" open>
+        <summary>GitHub isn’t fully set up on this server</summary>
+        <p className="fine-print">This is a one-time step for whoever runs this Waypoint deployment — your teammates only click “Connect GitHub”.</p>
+        <ul>
+          <Check ok={Object.values(setup.present).every(Boolean)} label="Server has the GitHub App credentials" />
+          <Check ok={setup.reachable} label="Server can authenticate to GitHub as the App" />
+          <Check ok={Boolean(setup.app?.matchesSlug)} label="App slug matches the server configuration" />
+          <Check ok={Boolean(setup.app) && setup.app!.missingPermissions.length === 0} label={setup.app?.missingPermissions.length ? `App is missing permissions: ${setup.app.missingPermissions.join(", ")}` : "App permissions are sufficient (read-only)"} />
+        </ul>
+      </details>}
+      {setup && <details className="setup-check">
+        <summary>Connection failing on GitHub?</summary>
+        <p className="fine-print">GitHub shows “redirect_uri is not associated with this application” when this address isn’t registered. In the GitHub App settings add this <strong>Callback URL</strong> (the App can have several): <code>{setup.callbackUrl}</code></p>
+      </details>}
       {installations.length > 0 && <form className="inline-form" onSubmit={loadRepositories}>
         <label htmlFor="github-installation-id">Authorized GitHub installation</label>
         <div className="inline-form-row">

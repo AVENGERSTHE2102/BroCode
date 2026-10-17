@@ -336,7 +336,8 @@ export async function readGitHubRepositorySnapshot(
       const author = typeof commit.author === "object" && commit.author !== null ? commit.author as Record<string, unknown> : {};
       items.push({ kind: "commit", sourceId: `github:commit:${repositoryId}:${sha}`, sourceVersion: sha,
         title: clip(commit.message).split("\n", 1)[0], body: clip(commit.message), url: githubUrl(item.html_url),
-        updatedAt: clip(author.date, 40), path: "", author: clip(author.name, 200) });
+        // Prefer the linked GitHub account login so the same contributor isn't split by git name; fall back to the git author name.
+        updatedAt: clip(author.date, 40), path: "", author: clip((item.author as Record<string, unknown> | null | undefined)?.login, 200) || clip(author.name, 200) });
     }
     for (const item of issueRows) {
       if (item.pull_request || !positiveId(item.id)) continue;

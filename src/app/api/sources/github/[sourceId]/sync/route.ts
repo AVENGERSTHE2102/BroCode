@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { drainGraphProjection } from "@/lib/graph-projection-drain";
 import { readGitHubRepositorySnapshot } from "@/lib/github-app";
 import { toGitHubImportRecords, toGitHubSecurityImportRecords, type GitHubSourceForImport } from "@/lib/github-source-import";
 import { readJsonBody } from "@/lib/read-json-body";
@@ -101,6 +102,8 @@ export async function POST(request: Request, context: { params: Promise<{ source
     }
     const status = partialErrors.length ? "partial" : "succeeded";
     const statusRecorded = await finishSync(status, counts, changedRecords, partialErrors, null, snapshot.headCommitSha);
+    // Project the newly queued records into the workspace graph after the response is sent.
+    after(() => drainGraphProjection().catch(() => undefined));
     return NextResponse.json({
       sourceId: source.sourceId, repository: snapshot.fullName, capturedAt,
       counts, changedRecords, projection: "queued", partialErrors, status, incremental: snapshot.incremental,

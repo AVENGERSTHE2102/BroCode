@@ -14,6 +14,7 @@ create table public.investigation_tasks (
   updated_at timestamptz not null default now(),
   foreign key (workspace_id, investigation_id)
     references public.investigations(workspace_id, id) on delete cascade,
+  unique (workspace_id, id),
   unique (workspace_id, investigation_id, idempotency_key),
   check (
     (status = 'claimed' and owner_id is not null and lease_expires_at is not null)

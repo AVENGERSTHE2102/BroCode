@@ -286,7 +286,7 @@ try {
   assert.equal(providerSignals[0]?.aborted, false);
   await completeWithModel([], [], { baseUrl: "https://models.example/v1", apiKey: "test", model: "test" }, undefined, 120);
   assert.equal(JSON.parse(providerBodies[1]).max_tokens, 120);
-  await assert.rejects(() => completeWithModel([], [], { baseUrl: "https://models.example/v1", apiKey: "test", model: "test" }, undefined, 1801), /token limit is invalid/);
+  await assert.rejects(() => completeWithModel([], [], { baseUrl: "https://models.example/v1", apiKey: "test", model: "test" }, undefined, 4001), /token limit is invalid/);
   cancellation.abort();
   assert.equal(providerSignals[0]?.aborted, true, "client cancellation must abort the provider request");
 } finally {
