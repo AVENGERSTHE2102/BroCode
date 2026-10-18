@@ -12,8 +12,12 @@
   <img src="https://img.shields.io/badge/Try%20the%20live%20app-waypoint--one--mu.vercel.app-5c7053?style=for-the-badge&labelColor=000000" alt="Try the live app" height="38" />
 </a>
 &nbsp;
-<a href="video/dist/waypoint-demo.mp4">
-  <img src="https://img.shields.io/badge/Watch%20the%20demo-video-000000?style=for-the-badge" alt="Watch the demo video" height="38" />
+<a href="https://youtu.be/lO6gwdgbC2M">
+  <img src="https://img.shields.io/badge/Watch%20the%20demo-YouTube-000000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch the demo video on YouTube" height="38" />
+</a>
+&nbsp;
+<a href="https://medium.com/@devikabongarde/your-ai-agent-sounds-confident-can-it-prove-it-172e6e0a29a8">
+  <img src="https://img.shields.io/badge/Read%20the%20blog-Medium-000000?style=for-the-badge&logo=medium&logoColor=white" alt="Read the blog post on Medium" height="38" />
 </a>
 
 <br /><br />
@@ -33,7 +37,8 @@
 <br /><br />
 
 <a href="#try-it-live"><b>Live app</b></a> ·
-<a href="#see-it-in-action"><b>Demo</b></a> ·
+<a href="https://youtu.be/lO6gwdgbC2M"><b>Demo video</b></a> ·
+<a href="https://medium.com/@devikabongarde/your-ai-agent-sounds-confident-can-it-prove-it-172e6e0a29a8"><b>Blog</b></a> ·
 <a href="#how-it-works"><b>Architecture</b></a> ·
 <a href="#quick-start"><b>Quick start</b></a> ·
 <a href="docs/DOCUMENTATION_INDEX.md"><b>Docs</b></a> ·
@@ -198,11 +203,11 @@ official MCP TypeScript SDK client — plug Waypoint's graph into any MCP-capabl
 ## See it in action
 
 <div align="center">
-  <a href="video/dist/waypoint-demo.mp4">
+  <a href="https://youtu.be/lO6gwdgbC2M">
     <img src="video/dist/waypoint-demo.gif" alt="Waypoint tracing a live GitHub repository's graph and citing its evidence" width="820" />
   </a>
   <br />
-  <sub>Sign-in, a connected GitHub repository, a FalkorDB graph, and a live agent trace — followed by animated explainers of the graph model and the approval-to-draft-PR flow. <a href="video/README.md">Recording notes →</a></sub>
+  <sub>Sign-in, a connected GitHub repository, a FalkorDB graph, and a live agent trace — followed by animated explainers of the graph model and the approval-to-draft-PR flow. <a href="https://youtu.be/lO6gwdgbC2M">Watch on YouTube →</a> · <a href="video/README.md">Recording notes →</a></sub>
 </div>
 
 <br />
