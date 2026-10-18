@@ -66,6 +66,32 @@
 
 .inspector.glass { position: absolute; z-index: 4; right: 16px; bottom: 16px; width: 290px; max-height: calc(100% - 100px); padding: 16px; overflow-y: auto; display: grid; gap: 10px; border-radius: 18px; animation: rise .3s ease both; }
 .inspector-close { position: absolute; top: 10px; right: 10px; display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 7px; background: var(--ck-raise); color: var(--ck-muted); cursor: pointer; }
+.inspector-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.impact-error { position: static; transform: none; max-width: none; margin: 0; }
+
+/* Blast-radius panel: hop-grouped affected entities, revealed in step with the canvas animation. */
+.impact-panel { display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid var(--ck-line); }
+.impact-head { display: flex; align-items: baseline; gap: 5px; font-size: 12px; color: var(--ck-muted); }
+.impact-head strong { color: var(--ck-text); font-weight: 550; }
+.impact-head button { margin-left: auto; display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 7px; background: var(--ck-raise); color: var(--ck-muted); cursor: pointer; }
+.impact-head button:hover { color: var(--ck-text); }
+.impact-types { display: flex; flex-wrap: wrap; gap: 6px; }
+.impact-types span { padding: 2px 9px; border-radius: 999px; color: #fff; font-size: 10px; opacity: .9; }
+.impact-rings { display: grid; gap: 8px; }
+.impact-ring { padding: 8px 10px; border: 1px solid var(--ck-line); border-radius: 12px; background: var(--ck-raise); transition: opacity .3s, transform .3s; }
+.impact-ring.is-pending { opacity: 0; transform: translateY(4px); }
+.impact-ring.is-revealed { opacity: 1; transform: none; animation: rise .35s ease both; }
+.impact-ring em { display: block; margin-bottom: 4px; color: var(--ck-muted); font-size: 10px; font-style: normal; text-transform: uppercase; letter-spacing: .4px; }
+.impact-ring ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.impact-ring li { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.impact-ring li span { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.impact-ring small { display: block; margin-top: 3px; color: var(--ck-muted); font-size: 10.5px; }
+.impact-experts { display: grid; gap: 6px; padding-top: 6px; border-top: 1px solid var(--ck-line); }
+.impact-experts strong { font-size: 11.5px; font-weight: 550; }
+.impact-experts ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.impact-experts li { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12px; }
+.impact-experts li span { flex: none; color: var(--ck-muted); font-size: 10.5px; }
+@media (prefers-reduced-motion: reduce) { .impact-ring { transition: none; animation: none; opacity: 1; transform: none; } }
 
 /* Agent dock */
 .dock { position: relative; display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--ck-line); background: var(--ck-panel); }
@@ -108,6 +134,26 @@
   .hud-tl { width: 190px; padding: 10px 12px; }.hud-bars, .hud-note { display: none; }.stage-search input { width: 90px; }
   .inspector.glass { width: calc(100% - 32px); max-height: 60%; }
   .sheet { padding-inline: 14px; }
+}
+@media (max-width: 480px) {
+  /* hud-tl and hud-tr are both absolutely positioned over the canvas; at 860px they already shrink, but at
+     phone width they still collide (hud-tl's right edge overlaps hud-tr's search box). Stack them instead. */
+  /* Stack both HUD panels from the top with a fixed offset (rather than bottom-anchoring hud-tr) so they
+     never depend on the stage's actual height, which varies and made the search bar bleed into the dock. */
+  .hud-tl { right: 16px; width: auto; padding: 8px 12px; }
+  .hud-tl .hud-stats { display: none; }
+  .hud-tr { top: 56px; left: 16px; right: 16px; flex-wrap: wrap; }
+  .stage-search { flex: 1; min-width: 0; }
+  .stage-search input { width: 100%; }
+  .agent-pill { bottom: 10px; max-width: calc(100% - 32px); }
+  .ghint { display: none; }
+  .ck-body { grid-template-rows: 48% minmax(0, 1fr); }
+  .stage-scope select { max-width: none; }
+  .ck-top { padding: 0 14px; gap: 8px; }
+  .ck-crumb .ck-role { display: none; }
+  .dock .chat-hero h1 { font-size: 22px; }
+  .dock .starter-row { flex-direction: column; }
+  .dock .starter-chip { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .cockpit .gedge.is-traversed line { animation: none; } }
 .stage-scope select { appearance: none; padding: 8px 30px 8px 13px; border: 1px solid var(--ck-line); border-radius: 999px; background: #ffffffeb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237b8473' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 12px center; color: var(--ck-text); font-size: 12px; cursor: pointer; max-width: 240px; }

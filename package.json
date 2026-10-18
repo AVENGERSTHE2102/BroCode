@@ -10,7 +10,7 @@
     "worker:graph-projection": "bun --conditions=react-server run scripts/graph-projection-worker.ts",
     "diagnose:falkordb": "node scripts/check-falkordb-connectivity.mjs",
     "typecheck": "tsc --noEmit",
-    "test:contracts": "bun run test:health-live && bun run test:health && bun run test:workspace-access && bun run test:attempts && bun run test:run-traces && bun run test:fact-quarantine && bun run test:eval-fixture && bun run test:locomo-fixture && bun run test:rate-limit && bun run test:same-origin && bun run test:graph-acl && bun run test:forgetting && bun run test:mcp && bun run test:mcp-sdk && bun run test:agent-runner && bun run test:github-source && bun run test:github-actions && bun run test:task-recovery && bun run test:recovery-export && bun run test:workspace-ask && bun run test:request-bodies && bun run test:run-stream && bun run test:workflow-domains && bun run test:eval-comparison && bun run test:graph-view && bun run test:key-pool",
+    "test:contracts": "bun run test:health-live && bun run test:health && bun run test:workspace-access && bun run test:attempts && bun run test:run-traces && bun run test:fact-quarantine && bun run test:eval-fixture && bun run test:locomo-fixture && bun run test:rate-limit && bun run test:same-origin && bun run test:graph-acl && bun run test:forgetting && bun run test:mcp && bun run test:mcp-sdk && bun run test:agent-runner && bun run test:github-source && bun run test:github-actions && bun run test:task-recovery && bun run test:recovery-export && bun run test:workspace-ask && bun run test:request-bodies && bun run test:run-stream && bun run test:workflow-domains && bun run test:eval-comparison && bun run test:graph-view && bun run test:key-pool && bun run test:graph-impact",
     "test:health-live": "bun run scripts/check-liveness-contract.ts",
     "test:health": "bun run scripts/check-health-contract.ts",
     "test:workspace-access": "bun run scripts/check-workspace-access.ts",
@@ -37,6 +37,7 @@
     "test:eval-comparison": "bun run scripts/check-eval-comparison.ts",
     "test:graph-view": "bun run scripts/check-graph-view.ts",
     "test:key-pool": "bun run scripts/check-key-pool.ts",
+    "test:graph-impact": "bun run scripts/check-graph-impact.ts",
     "eval:compare": "bun run scripts/run-evaluation-comparison.ts"
   },
   "dependencies": {

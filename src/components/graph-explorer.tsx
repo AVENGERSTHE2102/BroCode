@@ -1,15 +1,35 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Database, ExternalLink, Loader2, Network, RefreshCw, Search, Trash2, X, Zap } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Database, ExternalLink, Loader2, Network, RefreshCw, Search, Trash2, Waypoints, X, Zap } from "lucide-react";
 import { GraphCanvas } from "@/components/graph-canvas";
 import { Button } from "@/components/ui/button";
+import type { GraphDisplayPath } from "@/lib/graph-path-display";
 import { SAMPLE_EDGES, SAMPLE_NODES } from "@/lib/sample-graph-data";
 import { labelColor, layoutGraph, type GraphView, type ViewNode } from "@/lib/graph-view";
 
 export type Raw = { nodes: Array<{ key: string; label: string; title: string; version?: string; url?: string; sample?: boolean }>; edges: Array<{ from: string; to: string; type: string }>; truncated?: boolean };
 export type GraphActivity = { nodes: Set<string>; edges: Set<string>; running: boolean };
+type ImpactEntity = { key: string; label: string; title: string; hops?: number; connectingPaths?: number };
+type ImpactResult = { entityId: string; maxDepth: number; affectedCount: number; byType: Record<string, number>; affected: ImpactEntity[]; experts: ImpactEntity[]; paths: GraphDisplayPath[] };
 
 const GHOST = layoutGraph({ nodes: SAMPLE_NODES.map(([label, key, title]) => ({ key, label, title })), edges: SAMPLE_EDGES.map(([from, type, to]) => ({ from, type, to })) }, 1000, 640);
+
+// Groups a blast-radius result's raw paths into hop "rings" (0 = the entity itself) for a step-by-step reveal:
+// ring[h].nodeKeys are entities first reached at hop h, ring[h].edgeKeys are the edges that reach them.
+export function buildImpactRings(paths: GraphDisplayPath[]) {
+  const nodesByHop = new Map<number, Set<string>>();
+  const edgesByHop = new Map<number, Set<string>>();
+  for (const path of paths) {
+    path.nodes.forEach((node, index) => {
+      const key = node.sourceId ?? node.id;
+      (nodesByHop.get(index) ?? nodesByHop.set(index, new Set()).get(index)!).add(key);
+      const next = path.nodes[index + 1];
+      if (next) (edgesByHop.get(index + 1) ?? edgesByHop.set(index + 1, new Set()).get(index + 1)!).add(`${key}|${next.sourceId ?? next.id}`);
+    });
+  }
+  const maxHop = Math.max(0, ...nodesByHop.keys());
+  return Array.from({ length: maxHop + 1 }, (_, hop) => ({ hop, nodeKeys: [...(nodesByHop.get(hop) ?? [])], edgeKeys: [...(edgesByHop.get(hop) ?? [])] }));
+}
 
 // The cockpit stage: the live workspace graph, with the agent's traversal lit up in real time.
 export function GraphExplorer({ canManage, active, activity, onAsk, onOpenSources, onLoaded, onScopeChange }: {
@@ -23,6 +43,11 @@ export function GraphExplorer({ canManage, active, activity, onAsk, onOpenSource
   const [search, setSearch] = useState("");
   const [scope, setScope] = useState("all");
   const [scopeChosen, setScopeChosen] = useState(false);
+  const [impact, setImpact] = useState<ImpactResult | null>(null);
+  const [impactLoading, setImpactLoading] = useState(false);
+  const [impactError, setImpactError] = useState("");
+  const [impactStep, setImpactStep] = useState(0);
+  const impactTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -48,6 +73,47 @@ export function GraphExplorer({ canManage, active, activity, onAsk, onOpenSource
     } catch (cause) { setError(cause instanceof Error ? cause.message : "The sample could not be changed."); }
     finally { setBusy(false); }
   }
+
+  // Blast radius: fetch the real impact-analysis result, then step the reveal outward hop by hop (ring 0 is the
+  // entity itself, already selected) instead of dumping every affected node on the canvas at once.
+  const impactRings = useMemo(() => (impact ? buildImpactRings(impact.paths) : []), [impact]);
+  useEffect(() => {
+    if (impactTimer.current) clearInterval(impactTimer.current);
+    if (impactRings.length <= 1) { setImpactStep(impactRings.length ? impactRings.length - 1 : 0); return; }
+    setImpactStep(0);
+    let step = 0;
+    impactTimer.current = setInterval(() => {
+      step++;
+      setImpactStep(step);
+      if (step >= impactRings.length - 1 && impactTimer.current) { clearInterval(impactTimer.current); impactTimer.current = null; }
+    }, 550);
+    return () => { if (impactTimer.current) { clearInterval(impactTimer.current); impactTimer.current = null; } };
+  }, [impactRings]);
+  const impactHighlight = useMemo(() => {
+    if (!impactRings.length) return null;
+    const set = new Set<string>();
+    for (let hop = 0; hop <= impactStep; hop++) for (const key of impactRings[hop]?.nodeKeys ?? []) set.add(key);
+    return set;
+  }, [impactRings, impactStep]);
+  const impactEdges = useMemo(() => {
+    const set = new Set<string>();
+    for (let hop = 0; hop <= impactStep; hop++) for (const key of impactRings[hop]?.edgeKeys ?? []) set.add(key);
+    return set;
+  }, [impactRings, impactStep]);
+
+  async function runImpact(entityId: string) {
+    setImpactLoading(true); setImpactError(""); setImpact(null);
+    try {
+      const params = new URLSearchParams({ entityId });
+      if (scope !== "all") params.set("scope", scope);
+      const response = await fetch(`/api/graph/impact?${params}`, { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "The blast radius could not be analyzed.");
+      setImpact(body as ImpactResult);
+    } catch (cause) { setImpactError(cause instanceof Error ? cause.message : "The blast radius could not be analyzed."); }
+    finally { setImpactLoading(false); }
+  }
+  function replayImpact() { setImpact((current) => (current ? { ...current } : current)); }
 
   async function refreshGraph() {
     setBusy(true); setError("");
@@ -124,12 +190,14 @@ export function GraphExplorer({ canManage, active, activity, onAsk, onOpenSource
     return result;
   }, [view, selected]);
   const hasSample = raw?.nodes.some((item) => item.sample) ?? false;
+  useEffect(() => { setImpact(null); setImpactError(""); }, [selected]);
+  const showingImpact = Boolean(impact && node && impact.entityId === node.key);
 
   return (
     <div className="stage">
       <div className="stage-canvas">
         {view
-          ? <GraphCanvas fill view={view} selected={selected} onSelect={setSelected} highlight={highlight} activeEdges={activity.edges} label="Workspace knowledge graph" />
+          ? <GraphCanvas fill view={view} selected={selected} onSelect={setSelected} highlight={showingImpact ? impactHighlight : highlight} activeEdges={showingImpact ? impactEdges : activity.edges} label="Workspace knowledge graph" />
           : <div className="ghost"><GraphCanvas fill compact view={GHOST} label="Preview of a connected knowledge graph" /></div>}
       </div>
 
@@ -151,8 +219,10 @@ export function GraphExplorer({ canManage, active, activity, onAsk, onOpenSource
         {canManage && hasSample && <Button variant="outline" size="sm" className="hud-btn" onClick={() => sample("DELETE")} disabled={busy}><Trash2 size={13} /> Clear sample</Button>}
       </div>
 
-      {activity.running && <div className="agent-pill" role="status"><Zap size={13} /> Agent traversing the graph{traversal && traversal.size ? ` · ${traversal.size} entities` : "…"}</div>}
-      {!activity.running && traversal && traversal.size > 0 && <div className="agent-pill is-done" role="status"><Zap size={13} /> Answer path highlighted · {traversal.size} entities</div>}
+      {!showingImpact && activity.running && <div className="agent-pill" role="status"><Zap size={13} /> Agent traversing the graph{traversal && traversal.size ? ` · ${traversal.size} entities` : "…"}</div>}
+      {!showingImpact && !activity.running && traversal && traversal.size > 0 && <div className="agent-pill is-done" role="status"><Zap size={13} /> Answer path highlighted · {traversal.size} entities</div>}
+      {impact && showingImpact && impactStep < impactRings.length - 1 && <div className="agent-pill" role="status"><Waypoints size={13} /> Tracing blast radius · {Math.max(0, (impactHighlight?.size ?? 1) - 1)} entities so far</div>}
+      {impact && showingImpact && impactStep >= impactRings.length - 1 && <div className="agent-pill is-done" role="status"><Waypoints size={13} /> Blast radius mapped · {impact.affectedCount} entities</div>}
 
       {error && <p className="stage-error" role="alert">{error}</p>}
       {raw && !view && !loading && <div className="stage-empty">
@@ -174,7 +244,36 @@ export function GraphExplorer({ canManage, active, activity, onAsk, onOpenSource
         {node.url && <a className="citation-chip" href={node.url} target="_blank" rel="noreferrer">Open source <ExternalLink size={11} /></a>}
         <strong className="inspector-sub">Connections · {links.length}</strong>
         <ul>{links.map((link, index) => <li key={`${link.type}${index}`}><button type="button" onClick={() => setSelected(link.other.key)}><em>{link.dir === "out" ? "→" : "←"} {link.type.replaceAll("_", " ").toLowerCase()}</em>{link.other.title}</button></li>)}</ul>
-        {onAsk && <Button size="sm" onClick={() => onAsk(`What is connected to ${node.title}, and why does it matter?`)}>Ask the agent about this</Button>}
+        <div className="inspector-actions">
+          {onAsk && <Button size="sm" onClick={() => onAsk(`What is connected to ${node.title}, and why does it matter?`)}>Ask the agent about this</Button>}
+          <Button size="sm" variant="outline" onClick={() => runImpact(node.key)} disabled={impactLoading} title="Walk the graph outward and see everything connected, grouped by distance">
+            {impactLoading ? <Loader2 size={13} className="spin" /> : <Waypoints size={13} />} Blast radius
+          </Button>
+        </div>
+        {impactError && <p className="stage-error impact-error" role="alert">{impactError}</p>}
+        {impact && showingImpact && <div className="impact-panel" aria-live="polite">
+          <div className="impact-head">
+            <strong>{impact.affectedCount} entities</strong> within {impact.maxDepth} hop{impact.maxDepth === 1 ? "" : "s"}
+            <button type="button" onClick={replayImpact} title="Replay the reveal" aria-label="Replay the reveal"><RefreshCw size={12} /></button>
+          </div>
+          <div className="impact-types">{Object.entries(impact.byType).map(([type, count]) => <span key={type} style={{ background: labelColor(type) }}>{type} · {count}</span>)}</div>
+          <div className="impact-rings">
+            {impactRings.slice(1).filter((ring) => ring.nodeKeys.length).map((ring) => (
+              <div key={ring.hop} className={`impact-ring ${ring.hop <= impactStep ? "is-revealed" : "is-pending"}`}>
+                <em>{ring.hop} hop{ring.hop > 1 ? "s" : ""} away</em>
+                <ul>{ring.nodeKeys.slice(0, 6).map((key) => {
+                  const entity = impact.affected.find((item) => item.key === key);
+                  return <li key={key}><span style={{ background: labelColor(entity?.label ?? "Entity") }} />{entity?.title ?? key}</li>;
+                })}</ul>
+                {ring.nodeKeys.length > 6 && <small>+{ring.nodeKeys.length - 6} more</small>}
+              </div>
+            ))}
+          </div>
+          {impact.experts.length > 0 && <div className="impact-experts">
+            <strong>Ask before touching this</strong>
+            <ul>{impact.experts.slice(0, 5).map((person) => <li key={person.key}>{person.title}<span>{person.connectingPaths} link{person.connectingPaths === 1 ? "" : "s"}</span></li>)}</ul>
+          </div>}
+        </div>}
       </aside>}
     </div>
   );
