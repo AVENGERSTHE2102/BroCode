@@ -21,16 +21,22 @@ post-filter on the result.
 
 ```mermaid
 erDiagram
+    REPOSITORY ||--o{ FILE : CONTAINS
     REPOSITORY ||--o{ COMMIT : HAS_COMMIT
     REPOSITORY ||--o{ PULL_REQUEST : HAS_PULL_REQUEST
     REPOSITORY ||--o{ ISSUE : HAS_ISSUE
-    COMMIT ||--o{ CHECK_RUN : HAS_CHECK_RUN
-    PULL_REQUEST ||--o{ FILE : CHANGED_FILE
-    COMMIT ||--o{ FILE : CONTAINS
-    COMMIT }o--|| SOURCE_REVISION : HAS_REVISION
     PERSON ||--o{ COMMIT : AUTHORED
-    REPOSITORY ||--o{ DEPENDENCY : DEPENDS_ON
-    DEPENDENCY ||--o{ ADVISORY : AFFECTS
+    PERSON ||--o{ PULL_REQUEST : AUTHORED
+    PERSON ||--o{ ISSUE : AUTHORED
+    PULL_REQUEST ||--o{ FILE : CHANGED_FILE
+    COMMIT ||--o{ CHECK_RUN : HAS_CHECK_RUN
+    COMMIT }o--o{ ISSUE : REFERENCES
+    PULL_REQUEST }o--o{ ISSUE : REFERENCES
+    COMMIT ||--o{ SOURCE_REVISION : HAS_REVISION
+    REPOSITORY ||--o{ SECURITY_FINDING : HAS_SECURITY_FINDING
+    SECURITY_FINDING }o--|| DEPENDENCY : AFFECTS
+    SECURITY_FINDING }o--|| VULNERABILITY : IDENTIFIES
+    SECURITY_FINDING }o--o| FILE : IN_MANIFEST
 
     REPOSITORY {
         string source_id "github:repo:<id>"
@@ -115,11 +121,10 @@ candidates for human review rather than guessing. Alias assignment is an explici
 audited control-plane action, never fuzzy similarity matching, and candidate (unresolved)
 entities never count as cited evidence.
 
-## Relationship types in use or reserved
+## Relationship types
 
-`CONTAINS`, `HAS_COMMIT`, `HAS_ISSUE`, `HAS_PULL_REQUEST`, `CHANGED_FILE`,
-`HAS_CHECK_RUN`, `HAS_REVISION`, `AUTHORED`, `DEPENDS_ON`, `AFFECTS` are live today for the
-codebase workflow. `DEPLOYED_AS`, `TRIGGERED`, `INITIATED_BY`, `USED_DEVICE`,
-`LINKED_TO_CASE`, `OWNED_BY`, `SUPPORTED_BY`, `SUPERSEDES`, `PROPOSED`, `APPROVED`,
-`EXECUTED`, `VERIFIED` are reserved for the fraud, security, and memory/coordination
-projections as those sources connect.
+Source data: `CONTAINS`, `HAS_COMMIT`, `HAS_PULL_REQUEST`, `HAS_ISSUE`, `AUTHORED`,
+`CHANGED_FILE`, `HAS_CHECK_RUN`, `REFERENCES`, `HAS_REVISION`. Security: `HAS_SECURITY_FINDING`,
+`AFFECTS`, `IDENTIFIES`, `IN_MANIFEST`. Agent memory: `HAS_EVENT`, `HAS_FACT`, `HAS_VERSION`,
+`HAS_ATTEMPT`, `PREVIOUS_ATTEMPT`, `HAS_TASK`, `HANDED_OFF_TO`. All are written by
+`src/lib/graph-projection.ts`.

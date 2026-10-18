@@ -39,6 +39,7 @@
 <a href="#try-it-live"><b>Live app</b></a> ·
 <a href="https://youtu.be/lO6gwdgbC2M"><b>Demo video</b></a> ·
 <a href="https://medium.com/@devikabongarde/your-ai-agent-sounds-confident-can-it-prove-it-172e6e0a29a8"><b>Blog</b></a> ·
+<a href="#the-knowledge-graph"><b>Graph</b></a> ·
 <a href="#how-it-works"><b>Architecture</b></a> ·
 <a href="#quick-start"><b>Quick start</b></a> ·
 <a href="docs/DOCUMENTATION_INDEX.md"><b>Docs</b></a> ·
@@ -259,6 +260,130 @@ official MCP TypeScript SDK client — plug Waypoint's graph into any MCP-capabl
 | **Persistent investigations** | Revisit evidence, run traces, facts, attempts, and recovery exports. |
 | **Reviewed actions** | Review proposals, approve the exact change, and execute through a least-privilege, single-repository GitHub draft-PR path. |
 | **MCP integration** | 18 authenticated tools and three workflow prompts; discovery tested with the official TypeScript SDK client. |
+
+<br />
+
+## The knowledge graph
+
+Every workspace gets its own FalkorDB graph (`wp_<workspace-uuid>`). GitHub data and the
+agent's own working memory live in the same graph, so a single traversal can connect
+code, people, and prior investigations.
+
+### Nodes and relationships
+
+```mermaid
+flowchart LR
+    subgraph SRC[GitHub source data]
+        Person((Person))
+        Repository[Repository]
+        Commit[Commit]
+        PullRequest[PullRequest]
+        Issue[Issue]
+        File[File]
+        CheckRun[CheckRun]
+    end
+    subgraph SEC[Security]
+        SecurityFinding[SecurityFinding]
+        Dependency[Dependency]
+        Vulnerability[Vulnerability]
+    end
+    subgraph MEM[Agent memory]
+        Investigation[Investigation]
+        InvestigationEvent[InvestigationEvent]
+        Fact[Fact]
+        FactVersion[FactVersion]
+        Attempt[Attempt]
+        Task[Task]
+    end
+
+    Repository -->|CONTAINS| File
+    Repository -->|HAS_COMMIT| Commit
+    Repository -->|HAS_PULL_REQUEST| PullRequest
+    Repository -->|HAS_ISSUE| Issue
+    Person -->|AUTHORED| Commit
+    Person -->|AUTHORED| PullRequest
+    Person -->|AUTHORED| Issue
+    PullRequest -->|CHANGED_FILE| File
+    Commit -->|HAS_CHECK_RUN| CheckRun
+    Commit -->|REFERENCES| Issue
+    PullRequest -->|REFERENCES| Issue
+
+    Repository -->|HAS_SECURITY_FINDING| SecurityFinding
+    SecurityFinding -->|AFFECTS| Dependency
+    SecurityFinding -->|IDENTIFIES| Vulnerability
+    SecurityFinding -->|IN_MANIFEST| File
+
+    Investigation -->|HAS_EVENT| InvestigationEvent
+    Investigation -->|HAS_FACT| Fact
+    Fact -->|HAS_VERSION| FactVersion
+    Investigation -->|HAS_ATTEMPT| Attempt
+    Attempt -->|PREVIOUS_ATTEMPT| Attempt
+    Investigation -->|HAS_TASK| Task
+    Task -->|HANDED_OFF_TO| Person
+
+    classDef src fill:#2d333b,stroke:#8a9a7b,color:#fff
+    classDef sec fill:#f0883e,stroke:#b8621f,color:#fff
+    classDef mem fill:#7b61ff,stroke:#4b36c9,color:#fff
+    class Person,Repository,Commit,PullRequest,Issue,File,CheckRun src
+    class SecurityFinding,Dependency,Vulnerability sec
+    class Investigation,InvestigationEvent,Fact,FactVersion,Attempt,Task mem
+```
+
+Every node and relationship carries `source_id`, `source_version`, `workspace_id`, and an
+`acl_role`; each GitHub record also links to its prior versions through
+`HAS_REVISION → SourceRevision`. Security findings are visible to owners and admins only.
+
+### How the agent queries it
+
+```mermaid
+flowchart LR
+    Q([Question]) --> F{Exact ID?}
+    F -->|no| S[search_entities<br/>keyword match, most-connected first]
+    F -->|yes| R[resolve_entity<br/>exact id / source_id]
+    S --> R
+    R --> T[trace_entity · find_experts<br/>impact_analysis · shortest_path]
+    T --> V[Validate every claim<br/>against returned paths]
+    V --> A([Cited answer<br/>+ highlighted path])
+```
+
+| Agent tool | Question it answers | Cypher pattern |
+|---|---|---|
+| `search_entities` | "What matches these keywords?" | `MATCH (n) WHERE <keyword on title/name/path>` … `ORDER BY degree DESC` |
+| `resolve_entity` | "Which node is this exactly?" | `MATCH (n) WHERE n.id = $id OR n.source_id = $id` |
+| `graph_overview` | "What's in this graph?" | label counts, relationship counts, top hubs |
+| `trace_entity` | "What is this connected to?" | `MATCH p = (start)-[*1..4]-(related)` |
+| `find_experts` | "Who knows about this?" | `MATCH p = (:Person)-[*1..3]-(target)` |
+| `impact_analysis` | "What does this affect?" | `MATCH p = (t)-[*1..3]-(other)` |
+| `shortest_path` | "How are these two related?" | `shortestPath((a)-[*..6]-(b))` |
+
+Every traversal is bounded, parameter-bound, and checks access **on every node and
+relationship in the path, inside the query itself**. Here's the core of `trace_entity`:
+
+```cypher
+MATCH p = (start)-[*1..4]-(related)
+WHERE (start.id = $entity_id OR start.source_id = $entity_id)
+  AND length(p) <= $max_depth
+  AND all(node IN nodes(p)         WHERE <readable by caller's role>)
+  AND all(edge IN relationships(p) WHERE <readable by caller's role>)
+RETURN nodes(p), relationships(p)
+LIMIT $limit
+```
+
+### Where the agent's decisions come from
+
+FalkorDB is not a side store: **every answer Waypoint gives is assembled from graph
+traversals, and the code rejects anything that isn't.**
+
+| Step | What happens | Where in the code |
+|---|---|---|
+| Plan | The agent is instructed to work through the graph: search or resolve, then follow relationships with `trace_entity`, `find_experts`, `impact_analysis`, or `shortest_path`, preferring two or more hops of evidence. | `GRAPH_STRATEGY_PROMPT` in [`src/lib/agent-runner.ts`](src/lib/agent-runner.ts) |
+| Retrieve | Each tool runs a bounded, ACL-filtered Cypher query against the workspace's FalkorDB graph and returns nodes, relationships, source IDs, and versions. | [`src/lib/graph-agent-tools.ts`](src/lib/graph-agent-tools.ts), [`src/lib/graph-tools.ts`](src/lib/graph-tools.ts) |
+| Answer | Every claim must cite `sourceId` + `version` pairs copied from those tool results, and describe relationships exactly as the returned edge types say. | `SYSTEM_PROMPT` in [`src/lib/agent-runner.ts`](src/lib/agent-runner.ts) |
+| Enforce | A claim whose citations didn't come from an authorized graph result in this run is **rejected**, and the agent abstains instead of answering. | answer validation in [`src/lib/agent-runner.ts`](src/lib/agent-runner.ts) |
+| Show | The UI highlights the exact nodes and edges the agent walked, and the run trace stores every `GRAPH.QUERY`-backed tool call. | Cockpit graph view, investigation run traces |
+
+Full details, including entity resolution and aliases, are in
+[docs/Architecture/GRAPH_MODEL.md](docs/Architecture/GRAPH_MODEL.md).
 
 <br />
 
