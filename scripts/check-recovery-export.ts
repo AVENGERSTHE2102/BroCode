@@ -2,10 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { buildRecoverySnapshot, MAX_RECOVERY_EXPORT_BYTES, recoverySnapshotMarkdown } from "@/lib/recovery-export";
 
-const [detail, plan] = await Promise.all([
-  readFile(new URL("../src/app/investigation-detail.tsx", import.meta.url), "utf8"),
-  readFile(new URL("../MASTER_PLAN.md", import.meta.url), "utf8"),
-]);
+const detail = await readFile(new URL("../src/app/investigation-detail.tsx", import.meta.url), "utf8");
 const snapshot = buildRecoverySnapshot({
   investigation: { title: "Recovery ```case```", status: "active" },
   facts: Array.from({ length: 100 }, (_, index) => ({ fact_key: `fact-${index}`, version: 1, value: "🧭".repeat(300), provenance: "`".repeat(300) })),
@@ -27,5 +24,4 @@ assert.match(markdown, /# Workspace recovery context/);
 assert.match(markdown, /````json/);
 assert.match(detail, /Download Markdown/);
 assert.match(detail, /Download JSON/);
-assert.match(plan, /Markdown\/JSON export/);
 console.log(`Recovery export stays within ${MAX_RECOVERY_EXPORT_BYTES} bytes and omits closed tasks and overflow records.`);

@@ -1,0 +1,7 @@
+# Configure credentials through Vercel environment variables, never source uploads.
+.env*
+.git/
+.next/
+node_modules/
+# The separately built Remotion project is not part of the Next.js application.
+video/
