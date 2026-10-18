@@ -1,6 +1,8 @@
 # Waypoint
 
 <div align="center">
+  <img src="docs/assets/brand/readme-hero.webp" alt="Waypoint — connected intelligence, considered" width="100%" />
+  <br /><br />
   <strong>An action-first agent for connected operational data — graph reasoning your team can actually trust, with a human in the loop on every action.</strong>
   <br /><br />
   <img src="https://img.shields.io/badge/Bun-1.3.9-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun 1.3.9" />
