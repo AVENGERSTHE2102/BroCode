@@ -11,7 +11,8 @@
   <img src="https://img.shields.io/badge/contract%20tests-27%20passing-5c7053?style=for-the-badge" alt="27 offline contract tests passing" />
   <br /><br />
   <a href="#quick-start">Quick start</a> ·
-  <a href="video/dist/waypoint-demo.mp4">Demo video</a> ·
+  <a href="https://youtu.be/lO6gwdgbC2M">Demo video</a> ·
+  <a href="https://medium.com/@devikabongarde/your-ai-agent-sounds-confident-can-it-prove-it-172e6e0a29a8">Blog</a> ·
   <a href="docs/DOCUMENTATION_INDEX.md">Documentation</a> ·
   <a href="docs/Product/IMPACT_AND_EVIDENCE.md">Evidence</a> ·
   <a href="IMPLEMENTATION_TRACKER.md">Implementation tracker</a>
