@@ -12,21 +12,21 @@ FalkorDB never gets a direct write from a request — see
 
 ```mermaid
 flowchart TD
-    M1["202610150001\nworkspace_control_plane"] --> M2["202610150002\ninvestigations"]
-    M2 --> M3["202610150003\ntask_coordination"]
-    M3 --> M4["202610150004\naction_proposals"]
-    M4 --> M5["202610150005\ninvestigation_facts"]
-    M5 --> M6["202610150006\ninvestigation_attempts"]
-    M6 --> M7["202610150007\ninvestigation_forgetting"]
-    M7 --> M8["202610150008\ngithub_sources"]
-    M8 --> M9["202610150009\ngithub_source_records"]
-    M9 --> M10["202610150010\ngithub_record_history"]
-    M10 --> M11["202610150011\nworkspace_entity_aliases"]
-    M11 --> M12["202610150012\naction_execution"]
-    M12 --> M13["202610150013\ngithub_security_findings"]
-    M13 --> M14["...15-21\nquarantine, source validation,\nsync status, workflow domains"]
-    M14 --> M22["202610160001-002\nincremental sync cursor,\nsync function cleanup"]
-    M22 --> M23["202610160003\nworkspace_rate_limits"]
+    M1["202610150001<br/>workspace_control_plane"] --> M2["202610150002<br/>investigations"]
+    M2 --> M3["202610150003<br/>task_coordination"]
+    M3 --> M4["202610150004<br/>action_proposals"]
+    M4 --> M5["202610150005<br/>investigation_facts"]
+    M5 --> M6["202610150006<br/>investigation_attempts"]
+    M6 --> M7["202610150007<br/>investigation_forgetting"]
+    M7 --> M8["202610150008<br/>github_sources"]
+    M8 --> M9["202610150009<br/>github_source_records"]
+    M9 --> M10["202610150010<br/>github_record_history"]
+    M10 --> M11["202610150011<br/>workspace_entity_aliases"]
+    M11 --> M12["202610150012<br/>action_execution"]
+    M12 --> M13["202610150013<br/>github_security_findings"]
+    M13 --> M14["...15-21<br/>quarantine, source validation,<br/>sync status, workflow domains"]
+    M14 --> M22["202610160001-002<br/>incremental sync cursor,<br/>sync function cleanup"]
+    M22 --> M23["202610160003<br/>workspace_rate_limits"]
 ```
 
 One gotcha worth knowing before writing a new migration:

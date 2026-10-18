@@ -8,8 +8,8 @@ route resolves the caller's Supabase session and workspace membership first.
 
 ```mermaid
 flowchart LR
-    REST["REST routes\n/api/investigations/*\n/api/sources/*\n/api/graph/*"] --> SVC[Shared services]
-    MCP["POST /api/mcp\nJSON-RPC, 18 tools, 3 prompts"] --> SVC
+    REST["REST routes<br/>/api/investigations/*<br/>/api/sources/*<br/>/api/graph/*"] --> SVC[Shared services]
+    MCP["POST /api/mcp<br/>JSON-RPC, 18 tools, 3 prompts"] --> SVC
     SVC --> PG[(Postgres)]
     SVC --> FDB[(FalkorDB)]
 ```
