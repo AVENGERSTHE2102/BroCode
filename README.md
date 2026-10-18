@@ -310,6 +310,7 @@ agent-run loop and the approval-to-draft-PR flow.
 
 <div align="center">
 
+<a href="https://www.falkordb.com"><img src="https://avatars.githubusercontent.com/u/140048192?s=96&v=4" alt="FalkorDB" title="FalkorDB" width="48" height="48" /></a>&nbsp;
 <img src="https://skillicons.dev/icons?i=nextjs,ts,react,tailwind,supabase,postgres,bun,vercel,github&theme=dark" alt="Next.js, TypeScript, React, Tailwind, Supabase, Postgres, Bun, Vercel, GitHub" />
 
 </div>
