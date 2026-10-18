@@ -6,3 +6,9 @@ out/
 !.env.example
 *.tsbuildinfo
 supabase/.temp/
+
+# Demo video (video/README.md has rebuild commands)
+video/node_modules/
+video/out/
+video/public/clips/
+video/raw/

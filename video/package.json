@@ -1,0 +1,24 @@
+{
+  "name": "waypoint-demo-video",
+  "version": "1.0.0",
+  "description": "Remotion project for the Waypoint hackathon demo video.",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Waypoint out/waypoint-demo-silent.mp4",
+    "thumbnail": "remotion still src/index.ts Thumbnail out/thumbnail.png"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@remotion/cli": "^4.0.530",
+    "@remotion/google-fonts": "^4.0.530",
+    "@types/react": "^18.3.31",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.530",
+    "typescript": "^5.9.3"
+  }
+}
