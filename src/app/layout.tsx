@@ -10,5 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  // Browser extensions (password managers, grammar checkers, ad blockers) commonly inject attributes into
+  // <html>/<body> before React hydrates; suppressHydrationWarning keeps that from crashing the whole page.
+  return <html lang="en" suppressHydrationWarning><body suppressHydrationWarning>{children}</body></html>;
 }

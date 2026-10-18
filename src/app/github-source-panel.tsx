@@ -143,8 +143,14 @@ export function GitHubSourcePanel({ canManage }: { canManage: boolean }) {
     </ul> : <p>No GitHub repositories connected.</p>}
     {canManage && <>
       <div className="review-actions">
-        <button className="quiet-button" type="button" onClick={() => startInstallation("link")} disabled={busy}>{busy ? "Opening GitHub…" : installations.length ? "Reconnect GitHub" : "Connect GitHub"}</button>
+        {/* First connect must install the App fresh ("link" only finds installations that already exist); once one
+            exists, the primary action switches to "link" to re-sync the list, with "install" offered separately. */}
+        <button className="quiet-button" type="button" onClick={() => startInstallation(installations.length ? "link" : "install")} disabled={busy}>{busy ? "Opening GitHub…" : installations.length ? "Reconnect GitHub" : "Connect GitHub"}</button>
         {installations.length > 0 && <button className="quiet-button" type="button" onClick={() => startInstallation("install")} disabled={busy}>Add more repositories</button>}
+        {/* Covers the gap where the App is already installed on the user's GitHub account but not yet bound here
+            (e.g. a database switch): GitHub treats re-running "install" as an edit and sends no OAuth code, so the
+            primary button alone can't recover it — plain OAuth ("link") always returns a code regardless of state. */}
+        {installations.length === 0 && <button className="quiet-button" type="button" onClick={() => startInstallation("link")} disabled={busy}>Already installed on GitHub? Link it</button>}
       </div>
       <p className="fine-print">You’ll sign in with GitHub and choose what Waypoint can read. Access is read-only and limited to the repositories you pick.</p>
       {setup && !operatorReady && <details className="setup-check" open>
