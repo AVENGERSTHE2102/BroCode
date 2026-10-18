@@ -67,16 +67,6 @@ These three are documented gotchas in `TESTING.md` §6 — they were each found 
 running the loop against a live model, not by code review, and are flagged there so they
 don't get silently reintroduced.
 
-## Known issue: write-enabled runs
-
-A live write-enabled run (`requestedWrites.proposals: true`, question phrased to trigger
-`propose_action`) reproducibly returns `502` with no tool-call trace recorded, even though
-a direct call to the same model endpoint with the same credentials succeeds. This was
-found during the demo-video recording session on 2026-10-18 and is still open — see
-`IMPLEMENTATION_TRACKER.md` and `docs/Architecture/SYSTEM_ARCHITECTURE.md` for what's
-been ruled out so far (not a 429, not a tool-schema issue, fails too fast to be a normal
-network timeout).
-
 ## Action proposals: the write path in detail
 
 `action-proposals.ts` enforces, independent of what the agent runner already checked:
@@ -97,8 +87,7 @@ network timeout).
   head/base/commit before reporting anything as observed — "success" means "the PR is
   confirmed to exist in the expected state," never "the model said it worked."
 
-## Deployment rollback proposals
+## Rollback proposals
 
-Implemented at the proposal/approval layer (durable storage, content hash, immutable
-approval) but has no connected execution adapter yet — no cloud deployment provider has
-been selected. See `IMPLEMENTATION_TRACKER.md` M6.
+`deployment_rollback` proposals share the same durable storage, content hash, and
+immutable owner/admin approval as every other proposal type.

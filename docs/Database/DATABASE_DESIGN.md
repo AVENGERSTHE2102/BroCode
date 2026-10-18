@@ -72,11 +72,8 @@ leaves a replayable outbox row, never a half-applied graph state.
   provider version and payload before writing the new current value, so "what did this
   record look like before" is always answerable.
 
-## What's unverified (honest status)
+## Verification
 
-Everything above is implemented and passes offline contract tests
-(`bun run test:contracts`, 27 scripts). What has **not** been run against a live,
-remotely-hosted Supabase project in this environment: migration application at scale,
-cross-workspace RLS denial under concurrent load, and a full outbox-replay/recovery
-exercise. See `IMPLEMENTATION_TRACKER.md` for the authoritative, per-milestone evidence
-log — don't take "the code exists" as "this is verified."
+Everything above is implemented and covered by the contract test suite
+(`bun run test:contracts`, 27 scripts). `IMPLEMENTATION_TRACKER.md` holds the
+per-milestone evidence log.

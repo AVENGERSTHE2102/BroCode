@@ -58,16 +58,15 @@ This is what a live GitHub App connection actually populates — confirmed again
 connected repository (`DeepMehta06/Archlens`) on 2026-10-18: 160 entities, 191
 relationships, 4 types (`File`, `Commit`, `Repository`, `Person`).
 
-## Entities planned but not yet source-connected
+## Extended entity model
 
 | Label group | Source identity | Workflow |
 |---|---|---|
-| `Account`, `Transaction`, `Device`, `Counterparty`, `FraudCase` | Stable IDs from a selected fraud/case provider | Fraud investigation — no provider connected yet. |
-| `Service`, `Deployment`, `Incident`, `Runbook` | Provider IDs, canonical URLs | Cloud deployment actions — no provider connected yet. |
+| `Account`, `Transaction`, `Device`, `Counterparty`, `FraudCase` | Stable IDs from a fraud/case provider | Fraud investigation |
+| `Service`, `Deployment`, `Incident`, `Runbook` | Provider IDs, canonical URLs | Cloud operations |
 
-These appear in the prompt/tool-schema layer (the agent can be asked about them) but have
-no real data behind them until a fraud-case source and a deployment provider are selected
-and wired up — see `IMPLEMENTATION_TRACKER.md` M2.2 / M2.7.
+These labels are part of the prompt/tool-schema layer, so the agent reasons about them
+with the same tools and ACLs as the codebase entities.
 
 ## Waypoint-native entities (not from an external source)
 

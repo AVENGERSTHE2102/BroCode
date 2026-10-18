@@ -44,10 +44,10 @@ python video/make_vo.py
   running against a live model, not by reading the code.
 - **FalkorDB diagnostics**: `bun run diagnose:falkordb` is intentionally cloud
   (`falkors://`) only — see Decision D4 in `docs/Decisions/DECISIONS.md`.
-- **No Docker in the app itself** — the one sanctioned exception is local FalkorDB during
-  development, documented and dated in `docs/Deployment/DEPLOYMENT_GUIDE.md`.
+- **No Docker in the app itself** — local FalkorDB during development is the only
+  container, documented in `docs/Setup/SETUP_GUIDE.md`.
 
-## Reporting status honestly
+## Evidence standard
 
 This repo treats "typecheck passes" and "it works" as different claims. Before marking
 anything `done` in `IMPLEMENTATION_TRACKER.md`, say which of `TESTING.md` §5's four

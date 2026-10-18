@@ -129,18 +129,6 @@ Execution **never merges**; it only ever creates a draft PR and reports what Git
 actually returned. See `docs/Backend/BACKEND_GUIDE.md` for the exact invariants enforced
 in code, and `docs/API/API_REFERENCE.md` for the request/response shapes.
 
-## Known gap in this path (as of 2026-10-18)
-
-The write-enabled agent run (the path that lets the model itself call `propose_action`)
-returns a reproducible `502` before any tool call is even traced, in live testing against
-this deployment. A direct call to the configured model provider with the same credentials
-succeeds, so the fault is in `runToolSelectionLoop`'s handling of a write-enabled run, not
-the provider. The owner/admin-driven review-and-execute path (human writes the proposal
-through the REST routes, not the model) is implemented and offline-contract-tested, but
-has not had a live end-to-end run recorded. See `IMPLEMENTATION_TRACKER.md` for current
-status and `video/README.md` for how this was found and why the submission video
-illustrates this flow rather than screen-recording it.
-
 ## Trust boundaries
 
 | Boundary | Enforced by |

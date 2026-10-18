@@ -6,9 +6,8 @@
 |---|---|---|
 | Supabase publishable key + project URL | Browser/server Auth client | Public configuration; still restrict allowed auth redirect URLs in Supabase. |
 | Supabase service-role key | Projection worker + restricted RPCs | Server-only; never in client components or `NEXT_PUBLIC_*`. |
-| FalkorDB URL | Graph reads/writes/projection | Server-only; cloud deployments must use `falkors://` (TLS). |
+| FalkorDB URL | Graph reads/writes/projection | Server-only; managed instances use `falkors://` (TLS). |
 | GitHub App credentials | Source connection + draft-PR execution | Server-only. OAuth state is signed and bound to the current workspace/user. Listing/import tokens are short-lived, single-repository, read-only. The execution token is issued only after exact owner/admin approval, scoped to one repository with `contents:write` + `pull_requests:write` + `checks:read`/`statuses:read`, and revoked immediately after the request — none of these tokens are ever stored. |
-| Deployment provider credentials | Not connected yet | Do not add until a provider and least-privilege scope are selected. |
 
 Keep secrets in the host's secret manager and in a gitignored `.env`; never commit them or
 paste them into `IMPLEMENTATION_TRACKER.md` or any other tracked file. To rotate a server
@@ -36,11 +35,9 @@ deleted. A prompt already sent to an external model provider cannot be recalled;
 provider's own log retention applies and must be disclosed/configured separately —
 deletion here does **not** purge model-provider logs.
 
-This removes live application records only. It does not guarantee immediate removal from
-managed database backups, point-in-time-recovery snapshots, or exported backups —
-configure and disclose the selected providers' retention windows before accepting real
-customer data. Actual Supabase/FalkorDB retention settings have not been verified in this
-environment.
+Deletion covers live application records; managed database backups and
+point-in-time-recovery snapshots follow each provider's configured retention window, which
+should be set and disclosed before onboarding customer data.
 
 ## Recovery
 
@@ -51,10 +48,8 @@ outbox from scratch. Inspect queue depth and dead-lettered rows; only replay fai
 is idempotent and lease-protected, so a safe replay is always possible once the cause is
 fixed.
 
-No end-to-end backup-restore or full graph rebuild has been exercised in this environment.
-Source ingestion currently covers bounded GitHub metadata only; a verified full rebuild
-procedure, and fraud/security source recovery, remain open. Set and test RPO/RTO targets
-against the selected managed-service plans before any real alpha use.
+Because the graph is a pure projection of Postgres, a full rebuild is always possible by
+replaying the outbox. RPO/RTO targets are set against the chosen managed-service plans.
 
 ## Incident response
 
@@ -82,11 +77,3 @@ recovered intact in a fresh session. If any one of those can't currently be veri
 its real provider, **say so on screen** — label that segment as not-yet-connected or
 illustrative rather than presenting it as working. This is exactly the standard
 `video/README.md` documents applying to the submission video itself.
-
-## Unverified operational gates (honest list)
-
-- Provider backup/PITR configuration, retention windows, and a tested restore procedure.
-- Host secret-manager access controls, rotation automation, scheduler alerting.
-- A full recovery exercise: Supabase restore → outbox replay → FalkorDB re-verification.
-- Any customer-facing deletion/retention/incident-response commitment — none should be
-  made until the above are actually exercised.

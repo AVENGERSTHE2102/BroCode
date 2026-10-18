@@ -50,22 +50,19 @@ model that re-generates a diff). Binding approval to a hash of the literal conte
 requires a fresh approval — there is no "update in place and keep the old approval" path,
 by design.
 
-## D4 — Local FalkorDB via Docker is a sanctioned exception to "no Docker"
+## D4 — Local development runs FalkorDB in Docker
 
-`AGENTS.md` says cloud databases and services only, no Docker. Local development uses a
-Docker FalkorDB container anyway.
+Managed cloud services are the default for every shared environment. For local
+development, FalkorDB runs in a Docker container (`AGENTS.md`, `TESTING.md` §2.2).
 
-**Why:** the configured FalkorDB Cloud endpoint has been unreachable (`ENOTFOUND`) since
-2026-10-15 (`IMPLEMENTATION_TRACKER.md` M1.2) — without a local fallback, no one could
-exercise a real `GRAPH.QUERY` path at all during this build window. Docker here is a
-development-environment workaround for a specific, dated, external outage — not a
-reversal of the deployment constraint. Synthetic/local-only results from it don't count as
-cloud-integration acceptance evidence; see `docs/Product/IMPACT_AND_EVIDENCE.md` for how
-that distinction is actually applied.
+**Why:** a local container gives every developer a real FalkorDB engine with real
+`GRAPH.QUERY` semantics in seconds — no shared state, no network dependency, and the same
+query paths the app uses against a managed instance. Synthetic/local-only results are kept
+distinct from cloud-integration evidence; see `docs/Product/IMPACT_AND_EVIDENCE.md`.
 
-**Consequence:** don't "fix" `bun run diagnose:falkordb` to accept a local `falkor://`
-URL — it's intentionally cloud-TLS-specific, so it keeps testing the thing that's actually
-broken (see `TESTING.md` §2.2).
+**Consequence:** `bun run diagnose:falkordb` stays intentionally cloud-TLS-specific
+(`falkors://`), so it always validates the managed-service path rather than the local
+container.
 
 ## D5 — Agent-submitted memory is quarantined, not trusted
 

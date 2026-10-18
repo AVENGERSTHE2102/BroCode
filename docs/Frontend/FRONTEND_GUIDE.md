@@ -72,4 +72,4 @@ bun run typecheck    # tsc --noEmit
 ```
 
 No Docker is required for the frontend itself (only FalkorDB needs it locally — see
-`docs/Deployment/DEPLOYMENT_GUIDE.md`).
+`docs/Setup/SETUP_GUIDE.md`).
