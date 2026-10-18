@@ -16,19 +16,19 @@ flowchart LR
     end
 
     subgraph Waypoint["Next.js app (src/app, src/lib)"]
-        WEB[Pages: Cockpit, Sources,\nInvestigations, Ask]
-        REST["REST API routes\n(/api/investigations/*, /api/sources/*, ...)"]
-        MCPEP["MCP endpoint\n/api/mcp — 18 tools, JSON-RPC"]
-        RUNNER["Agent runner\nsrc/lib/agent-runner.ts"]
-        SVC["Shared application services\nsrc/lib/graph-tools.ts, agent-tools.ts,\naction-proposals.ts, facts.ts, attempts.ts, tasks.ts"]
+        WEB[Pages: Cockpit, Sources,<br/>Investigations, Ask]
+        REST["REST API routes<br/>(/api/investigations/*, /api/sources/*, ...)"]
+        MCPEP["MCP endpoint<br/>/api/mcp — 18 tools, JSON-RPC"]
+        RUNNER["Agent runner<br/>src/lib/agent-runner.ts"]
+        SVC["Shared application services<br/>src/lib/graph-tools.ts, agent-tools.ts,<br/>action-proposals.ts, facts.ts, attempts.ts, tasks.ts"]
     end
 
     AUTH[(Supabase Auth)]
-    PG[(Supabase Postgres\nidentity, workflow ledger,\nidempotency, audit)]
-    GRAPH[(FalkorDB\none graph per workspace)]
-    WORKER["Bun worker\nworker:graph-projection"]
-    LLM[OpenAI-compatible\nmodel provider]
-    GH[GitHub App\nscoped, short-lived tokens]
+    PG[(Supabase Postgres<br/>identity, workflow ledger,<br/>idempotency, audit)]
+    GRAPH[(FalkorDB<br/>one graph per workspace)]
+    WORKER["Bun worker<br/>worker:graph-projection"]
+    LLM[OpenAI-compatible<br/>model provider]
+    GH[GitHub App<br/>scoped, short-lived tokens]
 
     H --> WEB --> REST
     X --> MCPEP
@@ -64,28 +64,28 @@ request can never select which graph it reads.
 sequenceDiagram
     participant U as User (Ask box)
     participant API as POST /api/investigations/:id/run
-    participant Loop as runToolSelectionLoop
+    participant Runner as runToolSelectionLoop
     participant LLM as Model provider (Groq / OpenAI-compatible)
     participant MCP as invokeMcpTool
     participant FDB as FalkorDB
 
     U->>API: question, workflow domain
     API->>API: workspace auth, rate limit, idempotency key
-    Loop->>LLM: system prompt + question + tool schemas
-    LLM-->>Loop: tool_call resolve_entity
-    Loop->>MCP: resolve_entity(query, investigationId)
+    Runner->>LLM: system prompt + question + tool schemas
+    LLM-->>Runner: tool_call resolve_entity
+    Runner->>MCP: resolve_entity(query, investigationId)
     MCP->>FDB: GRAPH.QUERY (ACL-filtered)
     FDB-->>MCP: matching entities
-    MCP-->>Loop: result + evidenceId
-    Loop->>LLM: tool result appended to conversation
-    LLM-->>Loop: tool_call trace_entity
-    Loop->>MCP: trace_entity(entityId, maxDepth<=4)
+    MCP-->>Runner: result + evidenceId
+    Runner->>LLM: tool result appended to conversation
+    LLM-->>Runner: tool_call trace_entity
+    Runner->>MCP: trace_entity(entityId, maxDepth ≤ 4)
     MCP->>FDB: bounded multi-hop MATCH
     FDB-->>MCP: path nodes + relationships
-    MCP-->>Loop: result + graphPaths
-    Loop->>LLM: tool result appended
-    LLM-->>Loop: final JSON — claims + citations, or abstained
-    Loop-->>API: validated answer (citations checked against observed evidence)
+    MCP-->>Runner: result + graphPaths
+    Runner->>LLM: tool result appended
+    LLM-->>Runner: final JSON — claims + citations, or abstained
+    Runner-->>API: validated answer (citations checked against observed evidence)
     API-->>U: cited answer, graph path highlighted, run trace stored
 ```
 
@@ -109,7 +109,7 @@ sequenceDiagram
     participant GH as GitHub API
 
     Agent->>Prop: propose_action(github_patch, repo, baseSha, diff, evidence)
-    Prop->>Prop: require successful recall_attempts first;\nchangedConditions cited if a prior attempt failed
+    Prop->>Prop: require successful recall_attempts first,<br/>cite changedConditions if a prior attempt failed
     Prop->>PG: store proposal + SHA-256 content hash (idempotency key)
     Own->>PG: review exact diff + evidence, approve
     PG->>PG: immutable approval row bound to content hash
