@@ -6,7 +6,11 @@ colors, and scenes are Waypoint's own.
 
 ## Status (2026-10-18) — final
 
-`out/waypoint-demo.mp4` is rendered: 1:57.5, 1920x1080, real voice-over + music.
+`out/waypoint-demo.mp4` is rendered: 1:57.5, 1920x1080, real voice-over + music. The final
+deliverables are also copied to `video/dist/` (`waypoint-demo.mp4`, `thumbnail.png`,
+`waypoint-demo.gif`) — unlike `video/out/`, `video/dist/` is **not** gitignored, so the
+repo's own README can link straight to the committed file. Re-copy after any re-render:
+`cp out/waypoint-demo.mp4 out/thumbnail.png out/waypoint-demo.gif dist/`.
 
 - **Real, screen-recorded footage** (`video/raw/waypoint-recording.mp4`, cut by
   `cut_clips.sh`): signed-in cockpit, the connected `DeepMehta06/Archlens` GitHub repo

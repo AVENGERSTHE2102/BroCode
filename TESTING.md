@@ -33,7 +33,7 @@ value is missing — ask once, plainly, for exactly what's missing.
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL` | Everything (auth, workspaces, investigations, memory) | Supabase project dashboard → Settings → API / Database |
 | `FALKORDB_URL` | Graph queries, MCP tools, Ask/Investigate flows | See §2 — a local Docker instance works, no account needed |
 | `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` | Agent runner, Ask, eval harness | Any OpenAI-compatible provider — see §2.3 for a free option |
-| `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_STATE_SECRET` | GitHub source connector + action execution | A GitHub App you register — see `docs/operations-runbook.md` |
+| `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_STATE_SECRET` | GitHub source connector + action execution | A GitHub App you register — see `docs/Deployment/DEPLOYMENT_GUIDE.md` |
 
 Everything except `FALKORDB_URL` and the GitHub App block normally arrives
 already filled in via `.env` if you've pulled from someone who set this

@@ -6,6 +6,8 @@
 
 **Constraints:** Cloud databases and services only. No Docker. Real integrations are required for acceptance. Synthetic data may be used for automated tests only. Never put credentials in this file.
 
+**Documentation note (2026-10-18):** `docs/` was reorganized into `docs/API`, `docs/Architecture`, `docs/Backend`, `docs/Database`, `docs/Deployment`, `docs/Frontend`, `docs/Operations`, and `docs/Product` — see [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md). Entries below that cite an old flat path (e.g. `docs/graph-model.md`, `docs/operations-runbook.md`, `MASTER_PLAN.md`) are historical evidence log entries, left unedited; the current file lives under the reorganized structure.
+
 ## Status legend
 
 `todo` = not implemented; `in_progress` = implementation underway; `blocked` = needs a named external input or unavailable system; `done` = acceptance criteria passed with evidence recorded below.
