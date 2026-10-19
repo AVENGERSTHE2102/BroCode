@@ -1,0 +1,41 @@
+name: Graph projection
+
+# Drains the Supabase graph outbox into FalkorDB Cloud so newly synced
+# repositories appear in the graph without anyone running the worker by hand.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# The worker holds a database lease, so overlap is safe, but skip it anyway.
+concurrency:
+  group: graph-projection
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      FALKORDB_URL: ${{ secrets.FALKORDB_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+      - run: bun install --frozen-lockfile
+      # Each run projects one batch (about 20 events); repeat until the queue is empty.
+      - name: Drain outbox
+        run: |
+          for i in $(seq 1 20); do
+            out=$(bun run worker:graph-projection | tail -n 1)
+            echo "batch $i: $out"
+            echo "$out" | grep -q '"status":"ok"' || exit 1
+            echo "$out" | grep -q '"pending":0' && break
+          done
