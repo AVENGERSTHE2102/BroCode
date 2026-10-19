@@ -30,6 +30,32 @@ jobs:
         with:
           bun-version: 1.3.9
       - run: bun install --frozen-lockfile
+      # Fails fast with a clear reason if FALKORDB_URL is wrong. Prints only the URL's shape,
+      # never the host or credentials (Actions logs are public on a public repo).
+      - name: Check FalkorDB connection
+        run: |
+          bun -e '
+            import { createClient } from "redis";
+            const raw = process.env.FALKORDB_URL ?? "";
+            let u;
+            try { u = new URL(raw); } catch { console.log("::error::FALKORDB_URL secret is missing or not a valid URL"); process.exit(1); }
+            const local = ["localhost", "127.0.0.1", "host.docker.internal"].includes(u.hostname);
+            console.log(`scheme=${u.protocol} port=${u.port || "default"} username=${u.username ? "set" : "MISSING"} password=${u.password ? "set" : "MISSING"} host=${local ? "LOCAL (wrong)" : "remote"}`);
+            if (local) { console.log("::error::FALKORDB_URL points at a local Docker graph. Use the FalkorDB Cloud URL from .env, not .env.local"); process.exit(1); }
+            const c = createClient({ socket: { host: u.hostname, port: Number(u.port || 6379), tls: u.protocol === "falkors:", connectTimeout: 10000, reconnectStrategy: false },
+              username: decodeURIComponent(u.username) || undefined, password: decodeURIComponent(u.password) || undefined });
+            c.on("error", () => {});
+            try { await c.connect(); console.log("PING:", await c.ping()); await c.quit(); }
+            catch (e) {
+              const msg = String(e?.message ?? e);
+              const why = /WRONGPASS|NOAUTH|invalid username-password/i.test(msg) ? "wrong username or password (URL-encode special characters, e.g. @ as %40)"
+                : /ENOTFOUND|EAI_AGAIN/.test(msg) ? "host not found"
+                : /ECONNREFUSED/.test(msg) ? "connection refused"
+                : /timeout|ETIMEDOUT/i.test(msg) ? "connection timed out (check scheme falkor:// vs falkors://)"
+                : "unexpected error";
+              console.log(`::error::FalkorDB connection failed: ${e?.code ?? ""} ${why}`); process.exit(1);
+            }
+          '
       # Each run projects one batch (about 20 events); repeat until the queue is empty.
       - name: Drain outbox
         run: |
@@ -37,5 +63,6 @@ jobs:
             out=$(bun run worker:graph-projection | tail -n 1)
             echo "batch $i: $out"
             echo "$out" | grep -q '"status":"ok"' || exit 1
-            echo "$out" | grep -q '"pending":0' && break
+            if echo "$out" | grep -q '"pending":0'; then exit 0; fi
           done
+          echo "::warning::Outbox not empty after 20 batches; the next scheduled run will continue."
